@@ -100,7 +100,7 @@ func (tx *Transaction) SerializeUnsigned(w io.Writer) error {
 	}
 	tx.Payload.Serialize(w)
 	//nonce
-	serialization.WriteVarUint(w, tx.Nonce)
+	//serialization.WriteVarUint(w, tx.Nonce)
 	//[]*txAttribute
 	err := serialization.WriteVarUint(w, uint64(len(tx.Attributes)))
 	if err != nil {
@@ -207,11 +207,11 @@ func (tx *Transaction) DeserializeUnsignedWithoutType(r io.Reader) error {
 	tx.Payload.Deserialize(r)
 	//attributes
 
-	nonce, err := serialization.ReadVarUint(r, 0)
-	if err != nil {
-		return errors.New("Parse nonce error")
-	}
-	tx.Nonce = nonce
+	//nonce, err := serialization.ReadVarUint(r, 0)
+	//if err != nil {
+	//	return errors.New("Parse nonce error")
+	//}
+	//tx.Nonce = nonce
 
 	Len, err := serialization.ReadVarUint(r, 0)
 	if err != nil {
