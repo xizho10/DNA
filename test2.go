@@ -7,9 +7,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
+	"sync"
+	//"time"
 )
 
+var mux sync.Mutex
 var i int = 0
 
 // 定义http请求的处理方法
@@ -23,8 +25,10 @@ func handlerHello(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 
 	}
+	mux.Lock()
 	i++
 	fmt.Println(i)
+	mux.Unlock()
 	//fmt.Println(r.URL.Path,request)
 	resp := map[string]interface{}{
 		"Action":  "zx",
@@ -34,7 +38,7 @@ func handlerHello(w http.ResponseWriter, r *http.Request) {
 		"Version": "1.0.0",
 	}
 	ret, _ := json.Marshal(resp)
-	time.Sleep(time.Second / 500)
+	//time.Sleep(time.Second / 500)
 	w.Header().Add("Access-Control-Allow-Headers", "Content-Type")
 	w.Header().Set("content-type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -47,7 +51,7 @@ func main() {
 	http.HandleFunc("/", handlerHello)
 	fmt.Println("Server on 50334 start.")
 	// 在8086端口启动http服务，会一直阻塞执行
-	err := http.ListenAndServe("localhost:50334", nil)
+	err := http.ListenAndServe(":50334", nil)
 	if err != nil {
 		log.Println(err)
 	}

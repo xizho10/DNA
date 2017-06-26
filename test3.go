@@ -25,6 +25,7 @@ func HandleFunc(pattern string, handler func([]interface{}) map[string]interface
 	mainMux.m[pattern] = handler
 }
 
+var mux sync.Mutex
 var i int = 0
 
 func Handle(w http.ResponseWriter, r *http.Request) {
@@ -46,8 +47,10 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 
 	}
+	mux.Lock()
 	i++
 	fmt.Println(i)
+	mux.Unlock()
 	//fmt.Println(r.URL.Path,request)
 	var resp map[string]interface{}
 	if request["method"] != nil {

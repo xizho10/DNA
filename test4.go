@@ -8,9 +8,11 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"time"
+	//	"time"
+	"sync"
 )
 
+var mux sync.Mutex
 var i int = 0
 
 // 定义http请求的处理方法
@@ -24,8 +26,10 @@ func handlerHello(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 
 	}
+	mux.Lock()
 	i++
 	fmt.Println(i)
+	mux.Unlock()
 	//fmt.Println(r.URL.Path,request)
 	resp := map[string]interface{}{
 		"Action":  "zx",
@@ -35,7 +39,7 @@ func handlerHello(w http.ResponseWriter, r *http.Request) {
 		"Version": "1.0.0",
 	}
 	ret, _ := json.Marshal(resp)
-	time.Sleep(time.Second / 500)
+	//time.Sleep(time.Second / 500)
 	w.Header().Add("Access-Control-Allow-Headers", "Content-Type")
 	w.Header().Set("content-type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -44,10 +48,13 @@ func handlerHello(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
-	rest := restful.InitRestServer(checkAccessToken)
+	dnaFlag := false
+	if dnaFlag {
+		rest := restful.InitRestServer(checkAccessToken)
+		rest.Start()
+		return
+	}
 
-	rest.Start()
-	return
 	router := restful.NewRouter()
 	//router.Get("/", handlerHello)
 	router.Post("/", handlerHello)
