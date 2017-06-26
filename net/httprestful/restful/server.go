@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -59,7 +60,54 @@ func InitRestServer(checkAccessToken func(string, string) (string, int64, interf
 	return rt
 }
 
+var i int = 0
+
 func (rt *restServer) Start() error {
+	rt.router = NewRouter()
+	rt.registryMethod()
+	rt.initGetHandler()
+	rt.initPostHandler()
+	rt.router.Post("/", func(w http.ResponseWriter, r *http.Request) {
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+
+		}
+		request := make(map[string]interface{})
+		err = json.Unmarshal(body, &request)
+		if err != nil {
+
+		}
+		i++
+		fmt.Println(i)
+		//fmt.Println(r.URL.Path,request)
+		resp := map[string]interface{}{
+			"Action":  "zx",
+			"Result":  "restful-listen-dsggshshhhshitirurteetwt",
+			"Error":   0,
+			"Desc":    "",
+			"Version": "1.0.0",
+		}
+		ret, _ := json.Marshal(resp)
+		//time.Sleep(time.Second/500)
+		w.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("content-type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		//w.Header().Set("Connection", "close")
+		w.Write([]byte(ret))
+
+	})
+	listener, err := net.Listen("tcp", ":60334")
+	if err != nil {
+	}
+
+	server := &http.Server{Handler: rt.router}
+	fmt.Println("Server on 60334 start.")
+	err = server.Serve(listener)
+	if err != nil {
+	}
+	return nil
+}
+func (rt *restServer) Start2() error {
 	if Parameters.HttpRestPort == 0 {
 		log.Fatal("Not configure HttpRestPort port ")
 		return nil

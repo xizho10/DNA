@@ -331,18 +331,16 @@ func getRecordData(cmd map[string]interface{}) ([]byte, int64) {
 		return bys, Err.SUCCESS
 	}
 	type Data struct {
-		Algrithem string `json:Algrithem`
-		Desc      string `json:Desc`
-		Hash      string `json:Hash`
-		Text      string `json:Text`
-		Signature string `json:Signature`
+		Algrithem string      `json:Algrithem`
+		Hash      string      `json:Hash`
+		Signature string      `json:Signature`
+		Text      interface{} `json:Text`
 	}
 	type RecordData struct {
 		CAkey     string  `json:CAkey`
 		Data      Data    `json:Data`
 		SeqNo     string  `json:SeqNo`
 		Timestamp float64 `json:Timestamp`
-		//TrdPartyTimestamp float64 `json:TrdPartyTimestamp`
 	}
 
 	tmp := &RecordData{}
@@ -359,9 +357,20 @@ func getRecordData(cmd map[string]interface{}) ([]byte, int64) {
 		return nil, Err.INVALID_PARAMS
 	}
 	tmp.CAkey, ok = cmd["CAkey"].(string)
-	if !ok || tmp.Timestamp == 0 || len(tmp.Data.Hash) == 0 || len(tmp.Data.Algrithem) == 0 || len(tmp.Data.Desc) == 0 {
+	if !ok {
 		return nil, Err.INVALID_PARAMS
 	}
+	repBtys, err := json.Marshal(tmp)
+	if err != nil {
+		return nil, Err.INVALID_PARAMS
+	}
+	return repBtys, Err.SUCCESS
+}
+func getInnerTimestamp() ([]byte, int64) {
+	type InnerTimestamp struct {
+		InnerTimestamp float64 `json:InnerTimestamp`
+	}
+	tmp := &InnerTimestamp{InnerTimestamp: float64(time.Now().Unix())}
 	repBtys, err := json.Marshal(tmp)
 	if err != nil {
 		return nil, Err.INVALID_PARAMS
@@ -371,17 +380,26 @@ func getRecordData(cmd map[string]interface{}) ([]byte, int64) {
 func SendRecorByTransferTransaction(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
 	var recordData []byte
+	var innerTime []byte
 	recordData, resp["Error"] = getRecordData(cmd)
 	if recordData == nil {
 		return resp
 	}
+	innerTime, resp["Error"] = getInnerTimestamp()
 
 	var inputs []*tx.UTXOTxInput
 	var outputs []*tx.TxOutput
 
 	transferTx, _ := tx.NewTransferAssetTransaction(inputs, outputs)
-	record := tx.NewTxAttribute(tx.Description, recordData)
-	transferTx.Attributes = append(transferTx.Attributes, &record)
+
+	rcdInner := tx.NewTxAttribute(tx.Description, innerTime)
+	transferTx.Attributes = append(transferTx.Attributes, &rcdInner)
+	//for i:=0;i<recordData/65535 +1;i++{
+	//	//tmp := recordData/65535 +i+1)
+	//	tmp := recordData[i*65535:]
+	//	record := tx.NewTxAttribute(tx.Description, recordData)
+	//	transferTx.Attributes = append(transferTx.Attributes, &record)
+	//}
 
 	hash := transferTx.Hash()
 	resp["Result"] = ToHexString(hash.ToArray())
