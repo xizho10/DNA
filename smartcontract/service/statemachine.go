@@ -25,9 +25,9 @@ type StateMachine struct {
 	hashForVerifying []common.Uint160
 }
 
-func NewStateMachine() *StateMachine {
+func NewStateMachine(rwSet *storage.RWSet) *StateMachine {
 	var stateMachine StateMachine
-	stateMachine.RWSet = storage.NewRWSet()
+	stateMachine.RWSet = rwSet
 	stateMachine.StateReader = NewStateReader()
 	stateMachine.StateReader.Register("AntShares.Blockchain.RegisterValidator", stateMachine.RegisterValidator)
 	stateMachine.StateReader.Register("AntShares.Blockchain.CreateAsset", stateMachine.CreateAsset)

@@ -44,11 +44,11 @@ func NewExecutionEngine(container interfaces.ICodeContainer, crypto interfaces.I
 }
 
 type ExecutionEngine struct {
-	crypto  interfaces.ICrypto
-	table   interfaces.ICodeTable
-	service *InteropService
+	crypto          interfaces.ICrypto
+	table           interfaces.ICodeTable
+	service         *InteropService
 
-	codeContainer interfaces.ICodeContainer
+	codeContainer   interfaces.ICodeContainer
 	invocationStack *RandomAccessStack
 	opCount         int
 
@@ -56,11 +56,11 @@ type ExecutionEngine struct {
 	altStack        *RandomAccessStack
 	state           VMState
 
-	context *ExecutionContext
+	context         *ExecutionContext
 
 	//current opcode
-	opCode OpCode
-	gas int64
+	opCode          OpCode
+	gas             int64
 }
 
 func (e *ExecutionEngine) Create(code []byte, input []byte) ([]byte, error) {
@@ -75,7 +75,6 @@ func (e *ExecutionEngine) Call(codeHash common.Uint160, input []byte) ([]byte, e
 	e.Execute()
 	return nil, nil
 }
-
 
 func (e *ExecutionEngine) GetCodeContainer() interfaces.ICodeContainer {
 	return e.codeContainer
@@ -111,7 +110,7 @@ func (e *ExecutionEngine) CurrentContext() *ExecutionContext {
 
 func (e *ExecutionEngine) CallingContext() *ExecutionContext {
 	context := e.invocationStack.Peek(1).GetExecutionContext()
-	if context !=  nil {
+	if context != nil {
 		return context
 	}
 	return nil
@@ -136,7 +135,9 @@ func (e *ExecutionEngine) Execute() error {
 			break
 		}
 		err := e.StepInto()
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -162,10 +163,16 @@ func (e *ExecutionEngine) StepInto() error {
 	}
 	e.opCode = opCode
 	e.context = context
-	if !e.checkStackSize() { return ErrOverLimitStack }
-	if !e.checkItemSize() { return ErrOverMaxItemSize }
-	e.gas -= e.getPrice() *ratio
-	if e.gas < 0 { return ErrOutOfGas }
+	if !e.checkStackSize() {
+		return ErrOverLimitStack
+	}
+	if !e.checkItemSize() {
+		return ErrOverMaxItemSize
+	}
+	e.gas -= e.getPrice() * ratio
+	if e.gas < 0 {
+		return ErrOutOfGas
+	}
 	state, err := e.ExecuteOp()
 	if state == HALT || state == FAULT {
 		e.state = state
@@ -227,7 +234,9 @@ func (e *ExecutionEngine) AddBreakPoint(position uint) {
 }
 
 func (e *ExecutionEngine) RemoveBreakPoint(position uint) bool {
-	if e.invocationStack.Count() == 0 { return false }
+	if e.invocationStack.Count() == 0 {
+		return false
+	}
 	bs := make([]uint, 0)
 	breakPoints := e.context.BreakPoints
 	for _, v := range breakPoints {
@@ -245,61 +254,74 @@ func (e *ExecutionEngine) checkStackSize() bool {
 		size = 1
 	} else {
 		switch e.opCode {
-			case DEPTH, DUP, OVER, TUCK:
-				size = 1
-			case UNPACK:
-				item := Peek(e)
-				if _, ok := item.GetStackItem().(*types.Array); !ok {
-					return false
-				}
-				size = len(item.GetStackItem().GetArray())
+		case DEPTH, DUP, OVER, TUCK:
+			size = 1
+		case UNPACK:
+			item := Peek(e)
+			if _, ok := item.GetStackItem().(*types.Array); !ok {
+				return false
+			}
+			size = len(item.GetStackItem().GetArray())
 
 		}
 	}
 	size += e.evaluationStack.Count() + e.evaluationStack.Count()
-	if uint32(size) > StackLimit { return false }
+	if uint32(size) > StackLimit {
+		return false
+	}
 	return true
 }
 
 func (e *ExecutionEngine) checkItemSize() bool {
 	switch e.opCode {
-		case PUSH4:
-			if e.context.GetInstructionPointer() + 4 >= len(e.context.Code){
-				index := e.context.GetInstructionPointer()
-				bytesBuffer := bytes.NewBuffer(e.context.Code[index: index + 4])
-				var l uint32
-				binary.Read(bytesBuffer, binary.LittleEndian, &l)
-				if l > MAXSIZE { return false }
-			}
-		case CAT:
-			if e.evaluationStack.Count() < 2 { return false }
-			l := len(e.evaluationStack.Peek(0).GetStackItem().GetByteArray()) + len(e.evaluationStack.Peek(1).GetStackItem().GetByteArray())
-			if uint32(l) > MAXSIZE { return false }
+	case PUSH4:
+		index := e.context.GetInstructionPointer()
+		if index + 4 >= len(e.context.Code) {
+			return false
+		}
+		bytesBuffer := bytes.NewBuffer(e.context.Code[index: index + 4])
+		var l uint32
+		binary.Read(bytesBuffer, binary.LittleEndian, &l)
+		if l > MAXSIZE {
+			return false
+		}
+	case CAT:
+		if e.evaluationStack.Count() < 2 {
+			return false
+		}
+		l := len(e.evaluationStack.Peek(0).GetStackItem().GetByteArray()) + len(e.evaluationStack.Peek(1).GetStackItem().GetByteArray())
+		if uint32(l) > MAXSIZE {
+			return false
+		}
 	}
 	return true
 }
 
 func (e *ExecutionEngine) getPrice() int64 {
 	switch e.opCode {
-		case NOP:
-			return 0
-		case APPCALL, TAILCALL:
-			return 10
-		case SYSCALL:
-			return e.getPriceForSysCall()
-		case SHA1, SHA256:
-			return 10
-		case HASH160, HASH256:
-			return 20
-		case CHECKSIG:
-			return 100
-		case CHECKMULTISIG:
-			if e.evaluationStack.Count() == 0 { return 1 }
-			n := Peek(e).GetStackItem().GetBigInteger().Int64()
-			if n < 1 { return 1 }
-			return int64(100 * n)
-		default:
+	case NOP:
+		return 0
+	case APPCALL, TAILCALL:
+		return 10
+	case SYSCALL:
+		return e.getPriceForSysCall()
+	case SHA1, SHA256:
+		return 10
+	case HASH160, HASH256:
+		return 20
+	case CHECKSIG:
+		return 100
+	case CHECKMULTISIG:
+		if e.evaluationStack.Count() == 0 {
 			return 1
+		}
+		n := Peek(e).GetStackItem().GetBigInteger().Int64()
+		if n < 1 {
+			return 1
+		}
+		return int64(100 * n)
+	default:
+		return 1
 	}
 }
 
@@ -310,43 +332,43 @@ func (e *ExecutionEngine) getPriceForSysCall() int64 {
 	if i >= c - 3 {
 		return 1
 	}
-	l := int(context.Code[i+1])
+	l := int(context.Code[i + 1])
 	if i >= c - l - 2 {
 		return 1
 	}
-	name := string(context.Code[i+2: l])
+	name := string(context.Code[i + 2: l])
 	switch name {
-		case "AntShares.Blockchain.GetHeader":
-			return 100
-		case "AntShares.Blockchain.GetBlock":
-			return 200
-		case "AntShares.Blockchain.GetTransaction":
-			return 100
-		case "AntShares.Blockchain.GetAccount":
-			return 100
-		case "AntShares.Blockchain.RegisterValidator":
-		 	return 1000 * 100000000 / ratio;
-		case "AntShares.Blockchain.GetValidators":
-			return 200
-		case "AntShares.Blockchain.CreateAsset":
-			return 5000 * 100000000 / ratio
-		case "AntShares.Blockchain.GetAsset":
-			return 100
-		case "AntShares.Blockchain.CreateContract":
-			return 500 * 100000000 / ratio
-		case "AntShares.Blockchain.GetContract":
-			return 100
-		case "AntShares.Transaction.GetReferences":
-		 	return 200
-		case "AntShares.Asset.Renew":
-			return Peek(e).GetStackItem().GetBigInteger().Int64() * 5000 * 100000000 / ratio
-		case "AntShares.Storage.Get":
-			return 100
-		case "AntShares.Storage.Put":
-			return 1000
-		case "AntShares.Storage.Delete":
-			return 100
-		default:
-			return 1
+	case "AntShares.Blockchain.GetHeader":
+		return 100
+	case "AntShares.Blockchain.GetBlock":
+		return 200
+	case "AntShares.Blockchain.GetTransaction":
+		return 100
+	case "AntShares.Blockchain.GetAccount":
+		return 100
+	case "AntShares.Blockchain.RegisterValidator":
+		return 1000 * 100000000 / ratio;
+	case "AntShares.Blockchain.GetValidators":
+		return 200
+	case "AntShares.Blockchain.CreateAsset":
+		return 5000 * 100000000 / ratio
+	case "AntShares.Blockchain.GetAsset":
+		return 100
+	case "AntShares.Blockchain.CreateContract":
+		return 500 * 100000000 / ratio
+	case "AntShares.Blockchain.GetContract":
+		return 100
+	case "AntShares.Transaction.GetReferences":
+		return 200
+	case "AntShares.Asset.Renew":
+		return Peek(e).GetStackItem().GetBigInteger().Int64() * 5000 * 100000000 / ratio
+	case "AntShares.Storage.Get":
+		return 100
+	case "AntShares.Storage.Put":
+		return 1000
+	case "AntShares.Storage.Delete":
+		return 100
+	default:
+		return 1
 	}
 }

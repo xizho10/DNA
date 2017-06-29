@@ -315,7 +315,7 @@ func (bd *ChainStore) GetCurrentBlockHash() Uint256 {
 }
 
 func (bd *ChainStore) GetContract(hash []byte) ([]byte, error) {
-	prefix := []byte{byte(DATA_Contract)}
+	prefix := []byte{byte(ST_Contract)}
 	bData, err_get := bd.st.Get(append(prefix, hash...))
 	if err_get != nil {
 		//TODO: implement error process
@@ -736,23 +736,29 @@ func (bd *ChainStore) persist(b *Block) error {
 				return err
 			}
 		}
-		if b.Transactions[i].TxType == tx.RegisterAsset {
-			ar := b.Transactions[i].Payload.(*payload.RegisterAsset)
-			err = bd.SaveAsset(b.Transactions[i].Hash(), ar.Asset)
-			if err != nil {
-				return err
-			}
-		}
 
-		if b.Transactions[i].TxType == tx.IssueAsset {
-			results := b.Transactions[i].GetMergedAssetIDValueFromOutputs()
-			for assetId, value := range results {
-				if _, ok := quantities[assetId]; !ok {
-					quantities[assetId] += value
-				} else {
-					quantities[assetId] = value
+		switch b.Transactions[i].TxType {
+			case tx.RegisterAsset:
+				ar := b.Transactions[i].Payload.(*payload.RegisterAsset)
+				err = bd.SaveAsset(b.Transactions[i].Hash(), ar.Asset)
+				if err != nil {
+					return err
 				}
-			}
+			case tx.IssueAsset:
+				results := b.Transactions[i].GetMergedAssetIDValueFromOutputs()
+				for assetId, value := range results {
+					if _, ok := quantities[assetId]; !ok {
+						quantities[assetId] += value
+					} else {
+						quantities[assetId] = value
+					}
+				}
+			case tx.DeployCode:
+				deployCode := b.Transactions[i].Payload.(*payload.DeployCode)
+				codeHash := deployCode.Code.CodeHash()
+				codehash := codeHash.ToArray()
+				bd.st.BatchPut(append([]byte{byte(ST_Contract)},[]byte(codehash)...), deployCode.Code.GetCode())
+
 		}
 
 		for index := 0; index < len(b.Transactions[i].Outputs); index++ {
