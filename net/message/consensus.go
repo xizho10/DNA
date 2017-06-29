@@ -104,6 +104,13 @@ func (cp *ConsensusPayload) GetMessage() []byte {
 	//return []byte{}
 }
 
+
+func (b *ConsensusPayload) ToArray() ([]byte) {
+	bf := new(bytes.Buffer)
+	b.Serialize(bf)
+	return bf.Bytes()
+}
+
 func (msg consensus) Handle(node Noder) error {
 	log.Debug()
 	heights, _ := node.LocalNode().GetNeighborHeights()

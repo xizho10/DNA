@@ -3,6 +3,7 @@ package transaction
 import (
 	"DNA/common"
 	"io"
+	"bytes"
 )
 
 type TxOutput struct {
@@ -22,3 +23,12 @@ func (o *TxOutput) Deserialize(r io.Reader) {
 	o.Value.Deserialize(r)
 	o.ProgramHash.Deserialize(r)
 }
+
+func (ui *TxOutput) ToArray() ([]byte) {
+	b := new(bytes.Buffer)
+	ui.Serialize(b)
+	return b.Bytes()
+}
+
+
+

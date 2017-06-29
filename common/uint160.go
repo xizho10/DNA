@@ -92,3 +92,25 @@ func Uint160ParseFromBytes(f []byte) (Uint160, error) {
 	}
 	return Uint160(hash), nil
 }
+
+func (u *Uint160) SetBytes(b []byte) {
+	if len(b) > len(u) {
+		b = b[len(b)-UINT160SIZE:]
+	}
+	copy(u[UINT160SIZE-len(b):], b)
+}
+
+func BytesToUint160(b []byte) Uint160 {
+	u := new(Uint160)
+	u.SetBytes(b)
+	return *u
+}
+
+func BigToUint160(b *big.Int) Uint160 {
+	return BytesToUint160(b.Bytes())
+}
+
+func (u *Uint160) Big() *big.Int{
+	return new(big.Int).SetBytes(u.ToArray()[:])
+}
+

@@ -20,7 +20,9 @@ const (
 	// ASSET
 	ST_Info           DataEntryPrefix = 0xc0
 	ST_QuantityIssued DataEntryPrefix = 0xc1
-	ST_ACCOUNT        DataEntryPrefix = 0xc2
+	ST_Contract       DataEntryPrefix = 0xc2
+	ST_Storage        DataEntryPrefix = 0xc3
+	ST_ACCOUNT        DataEntryPrefix = 0xc4
 
 	//SYSTEM
 	SYS_CurrentBlock  DataEntryPrefix = 0x40

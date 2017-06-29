@@ -4,7 +4,6 @@ import (
 	. "DNA/common"
 	"DNA/common/log"
 	"DNA/common/serialization"
-	"DNA/core/account"
 	. "DNA/core/asset"
 	"DNA/core/contract/program"
 	. "DNA/core/ledger"
@@ -22,6 +21,7 @@ import (
 	"math/big"
 	"sort"
 	"sync"
+	"DNA/smartcontract/states"
 )
 
 const (
@@ -649,7 +649,7 @@ func (bd *ChainStore) persist(b *Block) error {
 	///////////////////////////////////////////////////////////////
 	// Get Unspents for every tx
 	unspentPrefix := []byte{byte(IX_Unspent)}
-	accounts := make(map[Uint160]*account.AccountState, 0)
+	accounts := make(map[Uint160]*states.AccountState, 0)
 
 	///////////////////////////////////////////////////////////////
 	// batch write begin
@@ -771,7 +771,7 @@ func (bd *ChainStore) persist(b *Block) error {
 				} else {
 					balances := make(map[Uint256]Fixed64, 0)
 					balances[assetId] = output.Value
-					accountState = account.NewAccountState(programHash, balances)
+					accountState = states.NewAccountState(programHash, balances)
 				}
 				accounts[programHash] = accountState
 			}
@@ -1194,7 +1194,7 @@ func (bd *ChainStore) GetHeight() uint32 {
 	return bd.currentBlockHeight
 }
 
-func (bd *ChainStore) GetAccount(programHash Uint160) (*account.AccountState, error) {
+func (bd *ChainStore) GetAccount(programHash Uint160) (*states.AccountState, error) {
 	accountPrefix := []byte{byte(ST_ACCOUNT)}
 
 	state, err := bd.st.Get(append(accountPrefix, programHash.ToArray()...))
@@ -1203,8 +1203,21 @@ func (bd *ChainStore) GetAccount(programHash Uint160) (*account.AccountState, er
 		return nil, err
 	}
 
-	accountState := new(account.AccountState)
+	accountState := new(states.AccountState)
 	accountState.Deserialize(bytes.NewBuffer(state))
 
 	return accountState, nil
+}
+
+func (bd *ChainStore) GetStorage(key []byte) ([]byte, error) {
+	prefix := []byte{byte(ST_Storage)}
+	bData, err_get := bd.st.Get(append(prefix, key...))
+
+	if err_get != nil {
+		return nil, err_get
+	}
+
+	log.Debug("GetStorage Data: ", bData)
+
+	return bData, nil
 }

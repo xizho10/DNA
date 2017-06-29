@@ -9,9 +9,10 @@ import (
 	tx "DNA/core/transaction"
 	"DNA/crypto"
 	. "DNA/errors"
-	"DNA/vm"
 	"io"
 	"time"
+	"bytes"
+	"DNA/vm/avm"
 )
 
 type Block struct {
@@ -117,6 +118,12 @@ func (b *Block) GetProgramHashes() ([]Uint160, error) {
 	return b.Blockdata.GetProgramHashes()
 }
 
+func (b *Block) ToArray() ([]byte) {
+	bf := new(bytes.Buffer)
+	b.Serialize(bf)
+	return bf.Bytes()
+}
+
 func (b *Block) SetPrograms(prog []*program.Program) {
 	b.Blockdata.SetPrograms(prog)
 	return
@@ -162,7 +169,7 @@ func GenesisBlockInit() (*Block, error) {
 
 	pg := new(program.Program)
 	pg.Code = []byte{'0'}
-	pg.Parameter = []byte{byte(vm.PUSHT)}
+	pg.Parameter = []byte{byte(avm.PUSHT)}
 	genesisBlockdata.Program = pg
 
 	//transaction
@@ -179,7 +186,7 @@ func GenesisBlockInit() (*Block, error) {
 			programHashes := []*program.Program{}
 			pg := new(program.Program)
 			pg.Code = []byte{'0'}
-			pg.Parameter = []byte{byte(vm.PUSHT)}
+			pg.Parameter = []byte{byte(avm.PUSHT)}
 			programHashes = append(programHashes, pg)
 			trans.Programs = programHashes
 		}

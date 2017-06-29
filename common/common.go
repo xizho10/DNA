@@ -11,7 +11,7 @@ import (
 	"math/rand"
 	"DNA/common/log"
 	. "DNA/errors"
-	"github.com/golang/crypto/ripemd160"
+	"golang.org/x/crypto/ripemd160"
 )
 
 func ToCodeHash(code []byte) (Uint160, error) {
