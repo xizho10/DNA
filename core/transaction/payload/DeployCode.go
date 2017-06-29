@@ -57,7 +57,10 @@ func (dc *DeployCode) Serialize(w io.Writer) error {
 }
 
 func (dc *DeployCode) Deserialize(r io.Reader) error {
+	dc.Code = new(FunctionCode)
+
 	err := dc.Code.Deserialize(r)
+
 	if err != nil {
 		return err
 	}
@@ -89,4 +92,3 @@ func (dc *DeployCode) Deserialize(r io.Reader) error {
 
 	return nil
 }
-

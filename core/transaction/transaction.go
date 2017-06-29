@@ -30,6 +30,7 @@ const (
 	TransferAsset  TransactionType = 0x80
 	Record         TransactionType = 0x81
 	DeployCode     TransactionType = 0xd0
+	InvokeCode     TransactionType = 0xd1
 	DataFile       TransactionType = 0x12
 )
 
@@ -199,6 +200,8 @@ func (tx *Transaction) DeserializeUnsignedWithoutType(r io.Reader) error {
 		tx.Payload = new(payload.BookKeeper)
 	case PrivacyPayload:
 		tx.Payload = new(payload.PrivacyPayload)
+	case InvokeCode:
+		tx.Payload = new(payload.InvokeCode)
 	case DataFile:
 		tx.Payload = new(payload.DataFile)
 	default:

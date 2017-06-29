@@ -10,7 +10,6 @@ import (
 	"DNA/vm/avm/types"
 	"encoding/binary"
 	"bytes"
-	"DNA/common/log"
 )
 
 const (
