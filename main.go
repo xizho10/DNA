@@ -12,6 +12,7 @@ import (
 	"DNA/net"
 	"DNA/net/httpjsonrpc"
 	"DNA/net/httprestful"
+	"DNA/net/httpwebsocket"
 	"DNA/net/protocol"
 	"os"
 	"runtime"
@@ -89,6 +90,7 @@ func main() {
 	go httpjsonrpc.StartRPCServer()
 	go httpjsonrpc.StartLocalServer()
 	httprestful.StartServer(noder)
+	httpwebsocket.StartServer(noder)
 
 	for {
 		time.Sleep(dbft.GenBlockTime)

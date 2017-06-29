@@ -1,17 +1,17 @@
 package common
 
 import (
+	"DNA/common/log"
+	. "DNA/errors"
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"io"
-	"os"
-	"math/rand"
-	"DNA/common/log"
-	. "DNA/errors"
 	"golang.org/x/crypto/ripemd160"
+	"io"
+	"math/rand"
+	"os"
 )
 
 func ToCodeHash(code []byte) (Uint160, error) {
@@ -72,6 +72,15 @@ func HexToBytes(value string) ([]byte, error) {
 	return hex.DecodeString(value)
 }
 
+func HexToBytesReverse(value string) ([]byte, error) {
+	u, err := hex.DecodeString(value)
+	length := len(u)
+	var x []byte = make([]byte, length)
+	for i, j := 0, length-1; i < j; i, j = i+1, j-1 {
+		x[i], x[j] = byte(u[j]), byte(u[i])
+	}
+	return x, err
+}
 func ClearBytes(arr []byte, len int) {
 	for i := 0; i < len; i++ {
 		arr[i] = 0
@@ -127,4 +136,3 @@ func FileExisted(filename string) bool {
 	_, err := os.Stat(filename)
 	return err == nil || os.IsExist(err)
 }
-

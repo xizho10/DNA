@@ -39,7 +39,14 @@ func (u *Uint160) ToArray() []byte {
 
 	return x
 }
+func (u *Uint160) ToArrayReverse() []byte {
 
+	var x []byte = make([]byte, UINT160SIZE)
+	for i, j := 0, UINT160SIZE-1; i < j; i, j = i+1, j-1 {
+		x[i], x[j] = byte(u[j]), byte(u[i])
+	}
+	return x
+}
 func (u *Uint160) Serialize(w io.Writer) (int, error) {
 	b_buf := bytes.NewBuffer([]byte{})
 	binary.Write(b_buf, binary.LittleEndian, u)
@@ -110,7 +117,6 @@ func BigToUint160(b *big.Int) Uint160 {
 	return BytesToUint160(b.Bytes())
 }
 
-func (u *Uint160) Big() *big.Int{
+func (u *Uint160) Big() *big.Int {
 	return new(big.Int).SetBytes(u.ToArray()[:])
 }
-
