@@ -3,10 +3,10 @@ package transaction
 import (
 	"DNA/common"
 	"DNA/core/asset"
+	"DNA/core/code"
 	"DNA/core/contract/program"
 	"DNA/core/transaction/payload"
 	"DNA/crypto"
-	"DNA/core/code"
 )
 
 //initial a new transaction with asset registration payload
@@ -146,11 +146,10 @@ func NewDataFileTransaction(path string, fileName string, note string, issuer *c
 }
 
 //initial a new transaction with publish payload
-func NewDeployTransaction(fc *code.FunctionCode, ic []byte, name string,codeversion string, author string,email string,desp string) (*Transaction, error) {
+func NewDeployTransaction(fc *code.FunctionCode, name string, codeversion string, author string, email string, desp string) (*Transaction, error) {
 	//TODO: check arguments
 	DeployCodePayload := &payload.DeployCode{
 		Code:        fc,
-		InitCode:    ic,
 		Name:        name,
 		CodeVersion: codeversion,
 		Author:      author,
@@ -172,7 +171,7 @@ func NewDeployTransaction(fc *code.FunctionCode, ic []byte, name string,codevers
 func NewInvokeTransaction(fc []byte) (*Transaction, error) {
 	//TODO: check arguments
 	InvokeCodePayload := &payload.InvokeCode{
-		Code:        fc,
+		Code: fc,
 	}
 
 	return &Transaction{

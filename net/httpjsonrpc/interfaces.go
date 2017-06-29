@@ -39,7 +39,7 @@ func TransArryByteToHexString(ptx *tx.Transaction) *Transactions {
 	n = 0
 	trans.UTXOInputs = make([]UTXOTxInputInfo, len(ptx.UTXOInputs))
 	for _, v := range ptx.UTXOInputs {
-		trans.UTXOInputs[n].ReferTxID = ToHexString(v.ReferTxID.ToArray())
+		trans.UTXOInputs[n].ReferTxID = ToHexString(v.ReferTxID.ToArrayReverse())
 		trans.UTXOInputs[n].ReferTxOutputIndex = v.ReferTxOutputIndex
 		n++
 	}
@@ -47,18 +47,18 @@ func TransArryByteToHexString(ptx *tx.Transaction) *Transactions {
 	n = 0
 	trans.BalanceInputs = make([]BalanceTxInputInfo, len(ptx.BalanceInputs))
 	for _, v := range ptx.BalanceInputs {
-		trans.BalanceInputs[n].AssetID = ToHexString(v.AssetID.ToArray())
+		trans.BalanceInputs[n].AssetID = ToHexString(v.AssetID.ToArrayReverse())
 		trans.BalanceInputs[n].Value = v.Value
-		trans.BalanceInputs[n].ProgramHash = ToHexString(v.ProgramHash.ToArray())
+		trans.BalanceInputs[n].ProgramHash = ToHexString(v.ProgramHash.ToArrayReverse())
 		n++
 	}
 
 	n = 0
 	trans.Outputs = make([]TxoutputInfo, len(ptx.Outputs))
 	for _, v := range ptx.Outputs {
-		trans.Outputs[n].AssetID = ToHexString(v.AssetID.ToArray())
+		trans.Outputs[n].AssetID = ToHexString(v.AssetID.ToArrayReverse())
 		trans.Outputs[n].Value = v.Value
-		trans.Outputs[n].ProgramHash = ToHexString(v.ProgramHash.ToArray())
+		trans.Outputs[n].ProgramHash = ToHexString(v.ProgramHash.ToArrayReverse())
 		n++
 	}
 
@@ -76,9 +76,9 @@ func TransArryByteToHexString(ptx *tx.Transaction) *Transactions {
 		trans.AssetOutputs[n].Key = k
 		trans.AssetOutputs[n].Txout = make([]TxoutputInfo, len(v))
 		for m := 0; m < len(v); m++ {
-			trans.AssetOutputs[n].Txout[m].AssetID = ToHexString(v[m].AssetID.ToArray())
+			trans.AssetOutputs[n].Txout[m].AssetID = ToHexString(v[m].AssetID.ToArrayReverse())
 			trans.AssetOutputs[n].Txout[m].Value = v[m].Value
-			trans.AssetOutputs[n].Txout[m].ProgramHash = ToHexString(v[m].ProgramHash.ToArray())
+			trans.AssetOutputs[n].Txout[m].ProgramHash = ToHexString(v[m].ProgramHash.ToArrayReverse())
 		}
 		n += 1
 	}
@@ -100,7 +100,7 @@ func TransArryByteToHexString(ptx *tx.Transaction) *Transactions {
 	}
 
 	mhash := ptx.Hash()
-	trans.Hash = ToHexString(mhash.ToArray())
+	trans.Hash = ToHexString(mhash.ToArrayReverse())
 
 	return trans
 }
@@ -113,7 +113,7 @@ func getCurrentDirectory() string {
 }
 func getBestBlockHash(params []interface{}) map[string]interface{} {
 	hash := ledger.DefaultLedger.Blockchain.CurrentBlockHash()
-	return DnaRpc(ToHexString(hash.ToArray()))
+	return DnaRpc(ToHexString(hash.ToArrayReverse()))
 }
 
 // Input JSON string examples for getblock method as following:
@@ -154,17 +154,17 @@ func getBlock(params []interface{}) map[string]interface{} {
 
 	blockHead := &BlockHead{
 		Version:          block.Blockdata.Version,
-		PrevBlockHash:    ToHexString(block.Blockdata.PrevBlockHash.ToArray()),
-		TransactionsRoot: ToHexString(block.Blockdata.TransactionsRoot.ToArray()),
+		PrevBlockHash:    ToHexString(block.Blockdata.PrevBlockHash.ToArrayReverse()),
+		TransactionsRoot: ToHexString(block.Blockdata.TransactionsRoot.ToArrayReverse()),
 		Timestamp:        block.Blockdata.Timestamp,
 		Height:           block.Blockdata.Height,
 		ConsensusData:    block.Blockdata.ConsensusData,
-		NextBookKeeper:   ToHexString(block.Blockdata.NextBookKeeper.ToArray()),
+		NextBookKeeper:   ToHexString(block.Blockdata.NextBookKeeper.ToArrayReverse()),
 		Program: ProgramInfo{
 			Code:      ToHexString(block.Blockdata.Program.Code),
 			Parameter: ToHexString(block.Blockdata.Program.Parameter),
 		},
-		Hash: ToHexString(hash.ToArray()),
+		Hash: ToHexString(hash.ToArrayReverse()),
 	}
 
 	trans := make([]*Transactions, len(block.Transactions))
@@ -173,7 +173,7 @@ func getBlock(params []interface{}) map[string]interface{} {
 	}
 
 	b := BlockInfo{
-		Hash:         ToHexString(hash.ToArray()),
+		Hash:         ToHexString(hash.ToArrayReverse()),
 		BlockData:    blockHead,
 		Transactions: trans,
 	}
@@ -197,6 +197,7 @@ func getBlockHash(params []interface{}) map[string]interface{} {
 		if err != nil {
 			return DnaRpcUnknownBlock
 		}
+		return DnaRpc(ToHexString(hash.ToArrayReverse()))
 		return DnaRpc(fmt.Sprintf("%016x", hash))
 	default:
 		return DnaRpcInvalidParameter
@@ -228,7 +229,7 @@ func getRawTransaction(params []interface{}) map[string]interface{} {
 	switch params[0].(type) {
 	case string:
 		str := params[0].(string)
-		hex, err := hex.DecodeString(str)
+		hex, err := HexToBytesReverse(str)
 		if err != nil {
 			return DnaRpcInvalidParameter
 		}
@@ -273,7 +274,7 @@ func sendRawTransaction(params []interface{}) map[string]interface{} {
 	default:
 		return DnaRpcInvalidParameter
 	}
-	return DnaRpc(ToHexString(hash.ToArray()))
+	return DnaRpc(ToHexString(hash.ToArrayReverse()))
 }
 
 func getUnspendOutput(params []interface{}) map[string]interface{} {
@@ -285,7 +286,7 @@ func getUnspendOutput(params []interface{}) map[string]interface{} {
 	switch params[0].(type) {
 	case string:
 		str := params[0].(string)
-		hex, err := hex.DecodeString(str)
+		hex, err := HexToBytesReverse(str)
 		if err != nil {
 			return DnaRpcInvalidParameter
 		}
@@ -299,7 +300,7 @@ func getUnspendOutput(params []interface{}) map[string]interface{} {
 	switch params[1].(type) {
 	case string:
 		str := params[1].(string)
-		hex, err := hex.DecodeString(str)
+		hex, err := HexToBytesReverse(str)
 		if err != nil {
 			return DnaRpcInvalidParameter
 		}
@@ -330,13 +331,13 @@ func getUnspendOutput(params []interface{}) map[string]interface{} {
 				continue
 			}
 			txHash := t.Hash()
-			txHashHex := ToHexString(txHash.ToArray())
+			txHashHex := ToHexString(txHash.ToArrayReverse())
 			for i, output := range t.Outputs {
 				if output.AssetID.CompareTo(assetHash) == 0 &&
 					output.ProgramHash.CompareTo(programHash) == 0 {
 					key := txHashHex + ":" + strconv.Itoa(i)
-					asset := ToHexString(output.AssetID.ToArray())
-					pHash := ToHexString(output.ProgramHash.ToArray())
+					asset := ToHexString(output.AssetID.ToArrayReverse())
+					pHash := ToHexString(output.ProgramHash.ToArrayReverse())
 					value := int64(output.Value)
 					info := &TxOutputInfo{
 						asset,
@@ -362,7 +363,7 @@ func getUnspendOutput(params []interface{}) map[string]interface{} {
 				continue
 			}
 			for _, input := range t.UTXOInputs {
-				refer := ToHexString(input.ReferTxID.ToArray())
+				refer := ToHexString(input.ReferTxID.ToArrayReverse())
 				index := strconv.Itoa(int(input.ReferTxOutputIndex))
 				key := refer + ":" + index
 				delete(outputs, key)
@@ -553,7 +554,7 @@ func regDataFile(params []interface{}) map[string]interface{} {
 	default:
 		return DnaRpcInvalidParameter
 	}
-	return DnaRpc(ToHexString(hash.ToArray()))
+	return DnaRpc(ToHexString(hash.ToArrayReverse()))
 }
 
 func catDataRecord(params []interface{}) map[string]interface{} {
@@ -563,7 +564,7 @@ func catDataRecord(params []interface{}) map[string]interface{} {
 	switch params[0].(type) {
 	case string:
 		str := params[0].(string)
-		b, err := hex.DecodeString(str)
+		b, err := HexToBytesReverse(str)
 		if err != nil {
 			return DnaRpcInvalidParameter
 		}
@@ -592,7 +593,7 @@ func getDataFile(params []interface{}) map[string]interface{} {
 	switch params[0].(type) {
 	case string:
 		str := params[0].(string)
-		hex, err := hex.DecodeString(str)
+		hex, err := HexToBytesReverse(str)
 		if err != nil {
 			return DnaRpcInvalidParameter
 		}

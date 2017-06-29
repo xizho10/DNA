@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -51,6 +52,55 @@ func GetBlockHeight(cmd map[string]interface{}) map[string]interface{} {
 	resp["Result"] = ledger.DefaultLedger.Blockchain.BlockHeight
 	return resp
 }
+func GetBlockHash(cmd map[string]interface{}) map[string]interface{} {
+	resp := ResponsePack(Err.SUCCESS)
+	param := cmd["Height"].(string)
+	if len(param) == 0 {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	height, err := strconv.ParseInt(param, 10, 64)
+	if err != nil {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	hash, err := ledger.DefaultLedger.Store.GetBlockHash(uint32(height))
+	if err != nil {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	resp["Result"] = ToHexString(hash.ToArrayReverse())
+	return resp
+}
+func GetBlockInfo(block *ledger.Block) BlockInfo {
+	hash := block.Hash()
+	blockHead := &BlockHead{
+		Version:          block.Blockdata.Version,
+		PrevBlockHash:    ToHexString(block.Blockdata.PrevBlockHash.ToArrayReverse()),
+		TransactionsRoot: ToHexString(block.Blockdata.TransactionsRoot.ToArrayReverse()),
+		Timestamp:        block.Blockdata.Timestamp,
+		Height:           block.Blockdata.Height,
+		ConsensusData:    block.Blockdata.ConsensusData,
+		NextBookKeeper:   ToHexString(block.Blockdata.NextBookKeeper.ToArrayReverse()),
+		Program: ProgramInfo{
+			Code:      ToHexString(block.Blockdata.Program.Code),
+			Parameter: ToHexString(block.Blockdata.Program.Parameter),
+		},
+		Hash: ToHexString(hash.ToArrayReverse()),
+	}
+
+	trans := make([]*Transactions, len(block.Transactions))
+	for i := 0; i < len(block.Transactions); i++ {
+		trans[i] = TransArryByteToHexString(block.Transactions[i])
+	}
+
+	b := BlockInfo{
+		Hash:         ToHexString(hash.ToArrayReverse()),
+		BlockData:    blockHead,
+		Transactions: trans,
+	}
+	return b
+}
 func getBlock(hash Uint256, getTxBytes bool) (interface{}, int64) {
 	block, err := ledger.DefaultLedger.Store.GetBlock(hash)
 	if err != nil {
@@ -61,33 +111,7 @@ func getBlock(hash Uint256, getTxBytes bool) (interface{}, int64) {
 		block.Serialize(w)
 		return hex.EncodeToString(w.Bytes()), Err.SUCCESS
 	}
-
-	blockHead := &BlockHead{
-		Version:          block.Blockdata.Version,
-		PrevBlockHash:    ToHexString(block.Blockdata.PrevBlockHash.ToArray()),
-		TransactionsRoot: ToHexString(block.Blockdata.TransactionsRoot.ToArray()),
-		Timestamp:        block.Blockdata.Timestamp,
-		Height:           block.Blockdata.Height,
-		ConsensusData:    block.Blockdata.ConsensusData,
-		NextBookKeeper:   ToHexString(block.Blockdata.NextBookKeeper.ToArray()),
-		Program: ProgramInfo{
-			Code:      ToHexString(block.Blockdata.Program.Code),
-			Parameter: ToHexString(block.Blockdata.Program.Parameter),
-		},
-		Hash: ToHexString(hash.ToArray()),
-	}
-
-	trans := make([]*Transactions, len(block.Transactions))
-	for i := 0; i < len(block.Transactions); i++ {
-		trans[i] = TransArryByteToHexString(block.Transactions[i])
-	}
-
-	b := BlockInfo{
-		Hash:         ToHexString(hash.ToArray()),
-		BlockData:    blockHead,
-		Transactions: trans,
-	}
-	return b, Err.SUCCESS
+	return GetBlockInfo(block), Err.SUCCESS
 }
 func GetBlockByHash(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
@@ -101,7 +125,7 @@ func GetBlockByHash(cmd map[string]interface{}) map[string]interface{} {
 		getTxBytes = true
 	}
 	var hash Uint256
-	hex, err := hex.DecodeString(param)
+	hex, err := HexToBytesReverse(param)
 	if err != nil {
 		resp["Error"] = Err.INVALID_PARAMS
 		return resp
@@ -147,7 +171,7 @@ func GetAssetByHash(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
 
 	str := cmd["Hash"].(string)
-	hex, err := hex.DecodeString(str)
+	hex, err := HexToBytesReverse(str)
 	if err != nil {
 		resp["Error"] = Err.INVALID_PARAMS
 		return resp
@@ -174,7 +198,7 @@ func GetUnspendOutput(cmd map[string]interface{}) map[string]interface{} {
 	var programHash Uint160
 	var assetHash Uint256
 
-	bys, err := hex.DecodeString(addr)
+	bys, err := HexToBytesReverse(addr)
 	if err != nil {
 		resp["Error"] = Err.INVALID_PARAMS
 		return resp
@@ -184,7 +208,7 @@ func GetUnspendOutput(cmd map[string]interface{}) map[string]interface{} {
 		return resp
 	}
 
-	bys, err = hex.DecodeString(assetid)
+	bys, err = HexToBytesReverse(assetid)
 	if err != nil {
 		resp["Error"] = Err.INVALID_PARAMS
 		return resp
@@ -215,13 +239,13 @@ func GetUnspendOutput(cmd map[string]interface{}) map[string]interface{} {
 				continue
 			}
 			txHash := t.Hash()
-			txHashHex := ToHexString(txHash.ToArray())
+			txHashHex := ToHexString(txHash.ToArrayReverse())
 			for i, output := range t.Outputs {
 				if output.AssetID.CompareTo(assetHash) == 0 &&
 					output.ProgramHash.CompareTo(programHash) == 0 {
 					key := txHashHex + ":" + strconv.Itoa(i)
-					asset := ToHexString(output.AssetID.ToArray())
-					pHash := ToHexString(output.ProgramHash.ToArray())
+					asset := ToHexString(output.AssetID.ToArrayReverse())
+					pHash := ToHexString(output.ProgramHash.ToArrayReverse())
 					value := int64(output.Value)
 					info := &TxOutputInfo{
 						asset,
@@ -247,7 +271,7 @@ func GetUnspendOutput(cmd map[string]interface{}) map[string]interface{} {
 				continue
 			}
 			for _, input := range t.UTXOInputs {
-				refer := ToHexString(input.ReferTxID.ToArray())
+				refer := ToHexString(input.ReferTxID.ToArrayReverse())
 				index := strconv.Itoa(int(input.ReferTxOutputIndex))
 				key := refer + ":" + index
 				delete(outputs, key)
@@ -263,7 +287,7 @@ func GetTransactionByHash(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
 
 	str := cmd["Hash"].(string)
-	bys, err := hex.DecodeString(str)
+	bys, err := HexToBytesReverse(str)
 	if err != nil {
 		resp["Error"] = Err.INVALID_PARAMS
 		return resp
@@ -313,7 +337,13 @@ func SendRawTransaction(cmd map[string]interface{}) map[string]interface{} {
 		resp["Error"] = Err.INTERNAL_ERROR
 		return resp
 	}
-	resp["Result"] = ToHexString(hash.ToArray())
+	resp["Result"] = ToHexString(hash.ToArrayReverse())
+
+	if txn.TxType == tx.InvokeCode {
+		if userid, ok := cmd["Userid"].(string); ok && len(userid) > 0 {
+			resp["Userid"] = userid
+		}
+	}
 	return resp
 }
 
@@ -332,17 +362,15 @@ func getRecordData(cmd map[string]interface{}) ([]byte, int64) {
 	}
 	type Data struct {
 		Algrithem string `json:Algrithem`
-		Desc      string `json:Desc`
 		Hash      string `json:Hash`
-		Text      string `json:Text`
 		Signature string `json:Signature`
+		Text      string `json:Text`
 	}
 	type RecordData struct {
 		CAkey     string  `json:CAkey`
 		Data      Data    `json:Data`
 		SeqNo     string  `json:SeqNo`
 		Timestamp float64 `json:Timestamp`
-		//TrdPartyTimestamp float64 `json:TrdPartyTimestamp`
 	}
 
 	tmp := &RecordData{}
@@ -359,9 +387,20 @@ func getRecordData(cmd map[string]interface{}) ([]byte, int64) {
 		return nil, Err.INVALID_PARAMS
 	}
 	tmp.CAkey, ok = cmd["CAkey"].(string)
-	if !ok || tmp.Timestamp == 0 || len(tmp.Data.Hash) == 0 || len(tmp.Data.Algrithem) == 0 || len(tmp.Data.Desc) == 0 {
+	if !ok {
 		return nil, Err.INVALID_PARAMS
 	}
+	repBtys, err := json.Marshal(tmp)
+	if err != nil {
+		return nil, Err.INVALID_PARAMS
+	}
+	return repBtys, Err.SUCCESS
+}
+func getInnerTimestamp() ([]byte, int64) {
+	type InnerTimestamp struct {
+		InnerTimestamp float64 `json:InnerTimestamp`
+	}
+	tmp := &InnerTimestamp{InnerTimestamp: float64(time.Now().Unix())}
 	repBtys, err := json.Marshal(tmp)
 	if err != nil {
 		return nil, Err.INVALID_PARAMS
@@ -371,6 +410,11 @@ func getRecordData(cmd map[string]interface{}) ([]byte, int64) {
 func SendRecorByTransferTransaction(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
 	var recordData []byte
+	var innerTime []byte
+	innerTime, resp["Error"] = getInnerTimestamp()
+	if innerTime == nil {
+		return resp
+	}
 	recordData, resp["Error"] = getRecordData(cmd)
 	if recordData == nil {
 		return resp
@@ -380,16 +424,31 @@ func SendRecorByTransferTransaction(cmd map[string]interface{}) map[string]inter
 	var outputs []*tx.TxOutput
 
 	transferTx, _ := tx.NewTransferAssetTransaction(inputs, outputs)
-	record := tx.NewTxAttribute(tx.Description, recordData)
-	transferTx.Attributes = append(transferTx.Attributes, &record)
 
-	hash := transferTx.Hash()
-	resp["Result"] = ToHexString(hash.ToArray())
+	rcdInner := tx.NewTxAttribute(tx.Description, innerTime)
+	transferTx.Attributes = append(transferTx.Attributes, &rcdInner)
 
+	bytesBuf := bytes.NewBuffer(recordData)
+	fmt.Println(len(recordData), hex.EncodeToString(recordData))
+	buf := make([]byte, 252)
+	for {
+		n, err := bytesBuf.Read(buf)
+		if err != nil {
+			fmt.Println(err)
+			break
+		}
+		fmt.Println(n)
+		record := tx.NewTxAttribute(tx.Description, buf[0:n])
+		transferTx.Attributes = append(transferTx.Attributes, &record)
+	}
 	if err := VerifyAndSendTx(transferTx); err != nil {
 		resp["Error"] = Err.INTERNAL_ERROR
 		return resp
 	}
+	hash := transferTx.Hash()
+	var data = make(map[string]interface{})
+	data["Txid"] = ToHexString(hash.ToArrayReverse())
+	resp["Result"] = data
 	return resp
 }
 
@@ -404,7 +463,7 @@ func SendRecodTransaction(cmd map[string]interface{}) map[string]interface{} {
 	recordTx, _ := tx.NewRecordTransaction(recordType, recordData)
 
 	hash := recordTx.Hash()
-	resp["Result"] = ToHexString(hash.ToArray())
+	resp["Result"] = ToHexString(hash.ToArrayReverse())
 	if err := VerifyAndSendTx(recordTx); err != nil {
 		resp["Error"] = Err.INTERNAL_ERROR
 		return resp
@@ -447,16 +506,12 @@ func GetNoticeServerAddr(cmd map[string]interface{}) map[string]interface{} {
 
 func SetPushBlockFlag(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
-	start, ok := cmd["Open"].(bool)
+	open, ok := cmd["Open"].(bool)
 	if !ok {
 		resp["Error"] = Err.INVALID_PARAMS
 		return resp
 	}
-	if start {
-		pushBlockFlag = true
-	} else {
-		pushBlockFlag = false
-	}
+	pushBlockFlag = open
 	resp["Result"] = pushBlockFlag
 	return resp
 }
