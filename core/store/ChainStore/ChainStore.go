@@ -22,6 +22,10 @@ import (
 	"sort"
 	"sync"
 	"DNA/smartcontract/states"
+	"DNA/smartcontract"
+	"DNA/smartcontract/service"
+	"DNA/net/httpwebsocket"
+	. "DNA/net/httprestful/error"
 )
 
 const (
@@ -33,18 +37,18 @@ var (
 )
 
 type ChainStore struct {
-	st IStore
+	st                 IStore
 
-	headerIndex map[uint32]Uint256
-	blockCache  map[Uint256]*Block
-	headerCache map[Uint256]*Header
+	headerIndex        map[uint32]Uint256
+	blockCache         map[Uint256]*Block
+	headerCache        map[Uint256]*Header
 
 	currentBlockHeight uint32
 	storedHeaderCount  uint32
 
-	mu sync.RWMutex
+	mu                 sync.RWMutex
 
-	disposed bool
+	disposed           bool
 }
 
 func init() {
@@ -143,7 +147,7 @@ func (bd *ChainStore) InitLedgerStoreWithGenesisBlock(genesisBlock *Block, defau
 
 			for i := 0; i < int(listNum); i++ {
 				listHash.Deserialize(r)
-				bd.headerIndex[startNum+uint32(i)] = listHash
+				bd.headerIndex[startNum + uint32(i)] = listHash
 				bd.storedHeaderCount++
 				//log.Debug( fmt.Sprintf( "listHash %d: %x\n", startNum+uint32(i), listHash ) )
 			}
@@ -170,7 +174,7 @@ func (bd *ChainStore) InitLedgerStoreWithGenesisBlock(genesisBlock *Block, defau
 		} else if current_Header_Height >= bd.storedHeaderCount {
 			hash = headerHash
 			for {
-				if hash == bd.headerIndex[bd.storedHeaderCount-1] {
+				if hash == bd.headerIndex[bd.storedHeaderCount - 1] {
 					break
 				}
 
@@ -314,9 +318,9 @@ func (bd *ChainStore) GetCurrentBlockHash() Uint256 {
 	return bd.headerIndex[bd.currentBlockHeight]
 }
 
-func (bd *ChainStore) GetContract(hash []byte) ([]byte, error) {
+func (bd *ChainStore) GetContract(codeHash Uint160) ([]byte, error) {
 	prefix := []byte{byte(ST_Contract)}
-	bData, err_get := bd.st.Get(append(prefix, hash...))
+	bData, err_get := bd.st.Get(append(prefix, codeHash.ToArray()...))
 	if err_get != nil {
 		//TODO: implement error process
 		return nil, err_get
@@ -358,7 +362,7 @@ func (bd *ChainStore) VerifyHeader(header *Header) bool {
 		return false
 	}
 
-	if prevHeader.Blockdata.Height+1 != header.Blockdata.Height {
+	if prevHeader.Blockdata.Height + 1 != header.Blockdata.Height {
 		log.Error("[VerifyHeader] failed, prevHeader.Height + 1 != header.Height")
 		return false
 	}
@@ -645,6 +649,7 @@ func (self *ChainStore) GetBookKeeperList() ([]*crypto.PubKey, []*crypto.PubKey,
 func (bd *ChainStore) persist(b *Block) error {
 	unspents := make(map[Uint256][]uint16)
 	quantities := make(map[Uint256]Fixed64)
+	dbCache := NewDBCache(bd)
 
 	///////////////////////////////////////////////////////////////
 	// Get Unspents for every tx
@@ -730,35 +735,108 @@ func (bd *ChainStore) persist(b *Block) error {
 			b.Transactions[i].TxType == tx.BookKeeper ||
 			b.Transactions[i].TxType == tx.PrivacyPayload ||
 			b.Transactions[i].TxType == tx.BookKeeping ||
+			b.Transactions[i].TxType == tx.DeployCode ||
+			b.Transactions[i].TxType == tx.InvokeCode ||
 			b.Transactions[i].TxType == tx.DataFile {
 			err = bd.SaveTransaction(b.Transactions[i], b.Blockdata.Height)
 			if err != nil {
 				return err
 			}
 		}
-
 		switch b.Transactions[i].TxType {
-			case tx.RegisterAsset:
-				ar := b.Transactions[i].Payload.(*payload.RegisterAsset)
-				err = bd.SaveAsset(b.Transactions[i].Hash(), ar.Asset)
-				if err != nil {
-					return err
+		case tx.RegisterAsset:
+			ar := b.Transactions[i].Payload.(*payload.RegisterAsset)
+			err = bd.SaveAsset(b.Transactions[i].Hash(), ar.Asset)
+			if err != nil {
+				return err
+			}
+		case tx.IssueAsset:
+			results := b.Transactions[i].GetMergedAssetIDValueFromOutputs()
+			for assetId, value := range results {
+				if _, ok := quantities[assetId]; !ok {
+					quantities[assetId] += value
+				} else {
+					quantities[assetId] = value
 				}
-			case tx.IssueAsset:
-				results := b.Transactions[i].GetMergedAssetIDValueFromOutputs()
-				for assetId, value := range results {
-					if _, ok := quantities[assetId]; !ok {
-						quantities[assetId] += value
-					} else {
-						quantities[assetId] = value
-					}
-				}
-			case tx.DeployCode:
-				deployCode := b.Transactions[i].Payload.(*payload.DeployCode)
-				codeHash := deployCode.Code.CodeHash()
-				codehash := codeHash.ToArray()
-				bd.st.BatchPut(append([]byte{byte(ST_Contract)},[]byte(codehash)...), deployCode.Code.GetCode())
+			}
+		case tx.DeployCode:
+			deployCode := b.Transactions[i].Payload.(*payload.DeployCode)
+			codeHash := deployCode.Code.CodeHash()
+			dbCache.RWSet.Add(ST_Contract, string(codeHash.ToArray()), &states.ContractState{
+				Code: deployCode.Code,
+				Name: deployCode.Name,
+				Version: deployCode.CodeVersion,
+				Author: deployCode.Author,
+				Email: deployCode.Email,
+				Description: deployCode.Description,
+				Language: deployCode.Language,
+				ProgramHash: deployCode.ProgramHash,
+			})
 
+			smartContract, err := smartcontract.NewSmartContract(&smartcontract.Context{
+				Language: deployCode.Language,
+				Caller: deployCode.ProgramHash,
+				StateMachine: service.NewStateMachine(dbCache),
+				DBCache: dbCache,
+				Code: deployCode.Code.Code,
+				Time: big.NewInt(int64(b.Blockdata.Timestamp)),
+				BlockNumber: big.NewInt(int64(b.Blockdata.Height)),
+				Gas: Fixed64(0),
+			})
+			if err != nil {
+				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), SMARTCODE_ERROR, fmt.Sprintf("[ERROR] Create SmartContract Error: %v", err))
+				continue
+			}
+			ret, err := smartContract.DeployContract()
+			if err != nil {
+				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), SMARTCODE_ERROR, fmt.Sprintf("[ERROR] Deploy SmartContract Error: %v", err))
+				continue
+			} else {
+				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), 0, ret)
+			}
+			err = dbCache.Commit()
+			if err != nil {
+				return err
+			}
+		case tx.InvokeCode:
+			invokeCode := b.Transactions[i].Payload.(*payload.InvokeCode)
+			contract, err := bd.GetContract(invokeCode.CodeHash)
+			if err != nil {
+				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), SMARTCODE_ERROR, fmt.Sprintf("[ERROE] contract code not exist:%v", err))
+				continue
+			}
+			state, err := states.GetStateValue(ST_Contract, contract)
+			if err != nil {
+				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), SMARTCODE_ERROR, err)
+				continue
+			}
+			contractState := state.(*states.ContractState)
+			smartContract, _ := smartcontract.NewSmartContract(&smartcontract.Context{
+				Language: contractState.Language,
+				Caller: invokeCode.ProgramHash,
+				StateMachine: service.NewStateMachine(dbCache),
+				DBCache: dbCache,
+				CodeHash: invokeCode.CodeHash,
+				Input: invokeCode.Code,
+				SignableData: b.Transactions[i],
+				CacheCodeTable: NewCacheCodeTable(dbCache),
+				Time: big.NewInt(int64(b.Blockdata.Timestamp)),
+				BlockNumber: big.NewInt(int64(b.Blockdata.Height)),
+				Gas: Fixed64(0),
+				ReturnType: contractState.Code.ReturnType,
+			})
+			ret, err := smartContract.InvokeContract()
+			fmt.Println("=====avm.PopInt(engine)", ret)
+			if err != nil {
+				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), SMARTCODE_ERROR, fmt.Sprintf("[Error] Invoke Contract error:%v", err))
+				continue
+			} else {
+				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), 0, ret)
+			}
+			err = dbCache.Commit()
+			if err != nil {
+				return err
+			}
 		}
 
 		for index := 0; index < len(b.Transactions[i].Outputs); index++ {
@@ -768,7 +846,7 @@ func (bd *ChainStore) persist(b *Block) error {
 			if value, ok := accounts[programHash]; ok {
 				value.Balances[assetId] += output.Value
 			} else {
-				accountState, err := bd.GetAccount(programHash)
+				accountState, _ := bd.GetAccount(programHash)
 				if err != nil && err.Error() != ErrDBNotFound.Error() {
 					return err
 				}
@@ -836,7 +914,7 @@ func (bd *ChainStore) persist(b *Block) error {
 			for k := 0; k < len(unspents[txhash]); k++ {
 				if unspents[txhash][k] == uint16(b.Transactions[i].UTXOInputs[index].ReferTxOutputIndex) {
 					unspents[txhash] = append(unspents[txhash], unspents[txhash][:k]...)
-					unspents[txhash] = append(unspents[txhash], unspents[txhash][k+1:]...)
+					unspents[txhash] = append(unspents[txhash], unspents[txhash][k + 1:]...)
 					break
 				}
 			}
@@ -846,7 +924,7 @@ func (bd *ChainStore) persist(b *Block) error {
 		if b.Transactions[i].TxType == tx.BookKeeper {
 			bk := b.Transactions[i].Payload.(*payload.BookKeeper)
 
-			switch bk.Action {
+			switch bk.Action{
 			case payload.BookKeeperAction_ADD:
 				findflag := false
 				for k := 0; k < len(nextBookKeeper); k++ {
@@ -873,7 +951,7 @@ func (bd *ChainStore) persist(b *Block) error {
 				if ind != -1 {
 					needUpdateBookKeeper = true
 					// already sorted
-					nextBookKeeper = append(nextBookKeeper[:ind], nextBookKeeper[ind+1:]...)
+					nextBookKeeper = append(nextBookKeeper[:ind], nextBookKeeper[ind + 1:]...)
 				}
 			}
 
@@ -979,7 +1057,7 @@ func (bd *ChainStore) addHeader(header *Header) {
 
 	hash := header.Blockdata.Hash()
 	bd.headerIndex[header.Blockdata.Height] = hash
-	for header.Blockdata.Height-bd.storedHeaderCount >= HeaderHashListCount {
+	for header.Blockdata.Height - bd.storedHeaderCount >= HeaderHashListCount {
 		hashBuffer := new(bytes.Buffer)
 		serialization.WriteVarUint(hashBuffer, uint64(HeaderHashListCount))
 		var hashArray []byte
@@ -1040,12 +1118,12 @@ func (bd *ChainStore) persistBlocks(ledger *Ledger) {
 	bd.mu.Lock()
 	defer bd.mu.Unlock()
 	for !bd.disposed {
-		if uint32(len(bd.headerIndex)) < bd.currentBlockHeight+1 {
+		if uint32(len(bd.headerIndex)) < bd.currentBlockHeight + 1 {
 			log.Warn("[persistBlocks]: warn, headerIndex.count < currentBlockHeight + 1")
 			break
 		}
 
-		hash := bd.headerIndex[bd.currentBlockHeight+1]
+		hash := bd.headerIndex[bd.currentBlockHeight + 1]
 
 		block, ok := bd.blockCache[hash]
 		if !ok {
@@ -1176,7 +1254,7 @@ func (bd *ChainStore) ContainsUnspent(txid Uint256, index uint16) (bool, error) 
 func (bd *ChainStore) GetCurrentHeaderHash() Uint256 {
 	bd.mu.RLock()
 	defer bd.mu.RUnlock()
-	return bd.headerIndex[uint32(len(bd.headerIndex)-1)]
+	return bd.headerIndex[uint32(len(bd.headerIndex) - 1)]
 }
 
 func (bd *ChainStore) GetHeaderHashByHeight(height uint32) Uint256 {

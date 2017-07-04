@@ -4,12 +4,13 @@ import (
 	"reflect"
 	"math/big"
 	"DNA/vm/evm/common"
+	. "DNA/common"
 )
 
 var (
 	big_t     = reflect.TypeOf(big.Int{})
 	ubig_t    = reflect.TypeOf(big.Int{})
-	address_t = reflect.TypeOf(common.Address{})
+	address_t = reflect.TypeOf(Uint160{})
 )
 
 

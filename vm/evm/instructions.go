@@ -6,7 +6,6 @@ import (
 	"DNA/vm/evm/common"
 	"DNA/vm/evm/crypto"
 	. "DNA/common"
-	"DNA/vm/evm/statedb"
 )
 
 var (
@@ -92,7 +91,7 @@ func opSmod(e *ExecutionEngine) ([]byte, error) {
 }
 
 func opAddMod(e *ExecutionEngine) ([]byte, error) {
-	x, y, z:= pop(e), pop(e), pop(e)
+	x, y, z := pop(e), pop(e), pop(e)
 	if z.Cmp(bigZero) > 0 {
 		add := x.Add(x, y)
 		add.Mod(add, z)
@@ -109,7 +108,7 @@ func opMulMod(e *ExecutionEngine) ([]byte, error) {
 		mul := x.Mul(x, y)
 		mul.Mod(mul, z)
 		push(e, common.U256(mul))
-	}else {
+	} else {
 		push(e, new(big.Int))
 	}
 	return nil, nil
@@ -124,7 +123,7 @@ func opExp(e *ExecutionEngine) ([]byte, error) {
 func opSignExtend(e *ExecutionEngine) ([]byte, error) {
 	back := pop(e)
 	if back.Cmp(big.NewInt(31)) < 0 {
-		bit := uint(back.Uint64()*8 + 7)
+		bit := uint(back.Uint64() * 8 + 7)
 		num := pop(e)
 		mask := back.Lsh(common.Big1, bit)
 		mask.Sub(mask, common.Big1)
@@ -142,7 +141,7 @@ func opLt(e *ExecutionEngine) ([]byte, error) {
 	x, y := pop(e), pop(e)
 	if x.Cmp(y) < 0 {
 		push(e, big.NewInt(1))
-	}else {
+	} else {
 		push(e, big.NewInt(0))
 	}
 	return nil, nil
@@ -152,7 +151,7 @@ func opGt(e *ExecutionEngine) ([]byte, error) {
 	x, y := pop(e), pop(e)
 	if x.Cmp(y) > 0 {
 		push(e, big.NewInt(1))
-	}else {
+	} else {
 		push(e, big.NewInt(0))
 	}
 	return nil, nil
@@ -180,9 +179,9 @@ func opSgt(e *ExecutionEngine) ([]byte, error) {
 
 func opEq(e *ExecutionEngine) ([]byte, error) {
 	x, y := pop(e), pop(e)
-	if x.Cmp(y) == 0{
+	if x.Cmp(y) == 0 {
 		push(e, big.NewInt(1))
-	}else {
+	} else {
 		push(e, big.NewInt(0))
 	}
 	return nil, nil
@@ -192,7 +191,7 @@ func opIsZero(e *ExecutionEngine) ([]byte, error) {
 	x := pop(e)
 	if x.Sign() > 0 {
 		push(e, big.NewInt(0))
-	}else {
+	} else {
 		push(e, big.NewInt(1))
 	}
 	return nil, nil
@@ -248,7 +247,7 @@ func opAddress(e *ExecutionEngine) ([]byte, error) {
 
 func opBalance(e *ExecutionEngine) ([]byte, error) {
 	programHash := BigToUint160(pop(e))
-	balance := e.StateDB.GetBalance(programHash)
+	balance := e.DBCache.GetBalance(programHash)
 	push(e, new(big.Int).Set(balance))
 	return nil, nil
 }
@@ -269,7 +268,7 @@ func opCallValue(e *ExecutionEngine) ([]byte, error) {
 
 func opCallDataLoad(e *ExecutionEngine) ([]byte, error) {
 	push(e, new(big.Int).SetBytes(common.GetData(e.contract.Input, pop(e), common.Big32)))
-   	return nil, nil
+	return nil, nil
 }
 
 func opCallDataSize(e *ExecutionEngine) ([]byte, error) {
@@ -281,7 +280,7 @@ func opCallDataCopy(e *ExecutionEngine) ([]byte, error) {
 	var (
 		mOff = pop(e)
 		cOff = pop(e)
-		l    = pop(e)
+		l = pop(e)
 	)
 	e.memory.Set(mOff.Uint64(), l.Uint64(), common.GetData(e.contract.Input, cOff, l))
 	return nil, nil
@@ -296,7 +295,7 @@ func opCodeCopy(e *ExecutionEngine) ([]byte, error) {
 	var (
 		mOff = pop(e)
 		cOff = pop(e)
-		l    = pop(e)
+		l = pop(e)
 	)
 	codeCopy := common.GetData(e.contract.Code, cOff, l)
 	e.memory.Set(mOff.Uint64(), l.Uint64(), codeCopy)
@@ -310,7 +309,7 @@ func opGasPrice(e *ExecutionEngine) ([]byte, error) {
 func opExtCodeSize(e *ExecutionEngine) ([]byte, error) {
 	a := pop(e)
 	codeHash := BigToUint160(a)
-	push(e, a.SetInt64(int64(e.StateDB.GetCodeSize(codeHash))))
+	push(e, a.SetInt64(int64(e.DBCache.GetCodeSize(codeHash))))
 	return nil, nil
 }
 
@@ -319,9 +318,13 @@ func opExtCodeCopy(e *ExecutionEngine) ([]byte, error) {
 		codeHash = BigToUint160(pop(e))
 		mOff = pop(e)
 		cOff = pop(e)
-		l    = pop(e)
+		l = pop(e)
 	)
-	codeCopy := common.GetData(e.StateDB.GetCode(codeHash), cOff, l)
+	state, err := e.DBCache.GetCode(codeHash)
+	if err != nil {
+		return nil, err
+	}
+	codeCopy := common.GetData(state, cOff, l)
 	e.memory.Set(mOff.Uint64(), l.Uint64(), codeCopy)
 	return nil, nil
 }
@@ -375,20 +378,23 @@ func opMstore8(e *ExecutionEngine) ([]byte, error) {
 }
 
 func opSload(e *ExecutionEngine) ([]byte, error) {
-	loc := common.BigToHash(pop(e))
-	val := e.StateDB.GetState(e.contract.CodeHash, loc).Big()
-	push(e, val)
+	loc := BigToHash(pop(e))
+	state, err := e.DBCache.GetState(e.contract.CodeHash, loc)
+	if err != nil {
+		return nil, err
+	}
+	push(e, state.Big())
 	return nil, nil
 }
 
 func opSstore(e *ExecutionEngine) ([]byte, error) {
-	loc := common.BigToHash(pop(e))
+	loc := BigToHash(pop(e))
 	val := pop(e)
-	e.StateDB.SetState(e.contract.CodeHash, loc, common.BigToHash(val))
+	e.DBCache.SetState(e.contract.CodeHash, loc, BigToHash(val))
 	return nil, nil
 }
 
-func opJump(e * ExecutionEngine) ([]byte, error) {
+func opJump(e *ExecutionEngine) ([]byte, error) {
 	pos := pop(e)
 	if !e.contract.jumpdest.has(e.contract.CodeHash, e.contract.Code, pos) {
 		nop := e.contract.GetOp(pos.Uint64())
@@ -435,14 +441,14 @@ func opCreate(e *ExecutionEngine) ([]byte, error) {
 	pop(e)
 	var (
 		offset, size = pop(e), pop(e)
-		input        = e.memory.Get(offset.Int64(), size.Int64())
+		input = e.memory.Get(offset.Int64(), size.Int64())
 	)
-	engine := NewExecutionEngine(e.StateDB.(*statedb.StateDB), e.time, e.blockNumber)
+	engine := NewExecutionEngine(e.DBCache, e.time, e.blockNumber, Fixed64(0))
 	_, err := engine.Create(e.contract.Caller, input)
 	codeHash, _ := ToCodeHash(input)
 	if err != nil {
 		push(e, new(big.Int))
-	}else {
+	} else {
 		push(e, codeHash.Big())
 	}
 	return nil, nil
@@ -457,11 +463,11 @@ func opCall(e *ExecutionEngine) ([]byte, error) {
 	pragramHash := BytesToUint160(hash.Bytes())
 	args := e.memory.Get(inOffset.Int64(), inSize.Int64())
 
-	engine := NewExecutionEngine(e.StateDB.(*statedb.StateDB), e.time, e.blockNumber)
+	engine := NewExecutionEngine(e.DBCache, e.time, e.blockNumber, Fixed64(0))
 	ret, err := engine.Call(pragramHash, e.contract.CodeHash, args)
 	if err != nil {
 		push(e, new(big.Int))
-	}else {
+	} else {
 		push(e, big.NewInt(1))
 		e.memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
@@ -486,10 +492,10 @@ func opReturn(e *ExecutionEngine) ([]byte, error) {
 
 func opSuicide(e *ExecutionEngine) ([]byte, error) {
 	programHash := BigToUint160(pop(e))
-	balance := e.StateDB.GetBalance(programHash)
+	balance := e.DBCache.GetBalance(programHash)
 	hash := BigToUint160(pop(e))
-	e.StateDB.AddBalance(hash, balance)
-	e.StateDB.Suicide(e.contract.CodeHash)
+	e.DBCache.AddBalance(hash, balance)
+	e.DBCache.Suicide(e.contract.CodeHash)
 	return nil, nil
 }
 
@@ -497,12 +503,12 @@ func makePush(size uint64, pushByteSize int) executionFunc {
 	return func(e *ExecutionEngine) ([]byte, error) {
 		codeLen := len(e.contract.Code)
 		startMin := codeLen
-		if int(e.pc+1) < startMin {
+		if int(e.pc + 1) < startMin {
 			startMin = int(e.pc + 1)
 		}
 
 		endMin := codeLen
-		if startMin+pushByteSize < endMin {
+		if startMin + pushByteSize < endMin {
 			endMin = startMin + pushByteSize
 		}
 
@@ -529,7 +535,7 @@ func makeSwap(size int64) executionFunc {
 
 func makeLog(size int) executionFunc {
 	return func(e *ExecutionEngine) ([]byte, error) {
- 		return nil, nil
+		return nil, nil
 	}
 }
 

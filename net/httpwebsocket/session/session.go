@@ -20,21 +20,18 @@ func (s *Session) GetSessionId() string {
 	return s.sSessionId
 }
 
-func NewSession(sessionList *SessionList, wsConn *websocket.Conn) (hispSession *Session, err error) {
+func newSession(wsConn *websocket.Conn) (session *Session, err error) {
 	sSessionId := uuid.NewUUID().String()
-	hispSession = &Session{
-		mConnection:  wsConn,
-		nLastActive:  time.Now().Unix(),
-		sSessionId:   sSessionId,
-		mSessionList: sessionList,
+	session = &Session{
+		mConnection: wsConn,
+		nLastActive: time.Now().Unix(),
+		sSessionId:  sSessionId,
 	}
-	sessionList.addOnlineSession(hispSession)
-	return hispSession, err
+	return session, nil
 }
 
-func (s *Session) Close() {
+func (s *Session) close() {
 	if s.mConnection != nil {
-		s.mSessionList.removeSession(s)
 		s.mConnection.Close()
 		s.mConnection = nil
 	}
@@ -58,7 +55,7 @@ func (s *Session) Send(data []byte) error {
 func (s *Session) SessionTimeoverCheck() bool {
 
 	nCurTime := time.Now().Unix()
-	if nCurTime-s.nLastActive > 300 { //5 mins
+	if nCurTime-s.nLastActive > 120 { //sec
 		return true
 	}
 	return false

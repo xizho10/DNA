@@ -45,8 +45,8 @@ const (
 	Api_Restart                      = "/api/v1/restart"
 	Api_SendRawTransaction           = "/api/v1/transaction"
 	Api_SendCustomRecordTxByTransfer = "/api/v1/custom/transaction/record"
-	Api_OauthServerAddr              = "/api/v1/config/oauthserver/addr"
-	Api_NoticeServerAddr             = "/api/v1/config/noticeserver/addr"
+	Api_OauthServerUrl               = "/api/v1/config/oauthserver/url"
+	Api_NoticeServerUrl              = "/api/v1/config/noticeserver/url"
 	Api_NoticeServerState            = "/api/v1/config/noticeserver/state"
 	Api_WebsocketState               = "/api/v1/config/websocket/state"
 )
@@ -106,8 +106,8 @@ func (rt *restServer) registryMethod() {
 		Api_Gettransaction:     {name: "gettransaction", handler: GetTransactionByHash},
 		Api_Getasset:           {name: "getasset", handler: GetAssetByHash},
 		Api_GetUnspendOutput:   {name: "getunspendoutput", handler: GetUnspendOutput},
-		Api_OauthServerAddr:    {name: "getoauthserveraddr", handler: GetOauthServerAddr},
-		Api_NoticeServerAddr:   {name: "getnoticeserveraddr", handler: GetNoticeServerAddr},
+		Api_OauthServerUrl:     {name: "getoauthserverurl", handler: GetOauthServerUrl},
+		Api_NoticeServerUrl:    {name: "getnoticeserverurl", handler: GetNoticeServerUrl},
 		Api_Restart:            {name: "restart", handler: rt.Restart},
 	}
 
@@ -129,13 +129,19 @@ func (rt *restServer) registryMethod() {
 		} else {
 			httpwebsocket.Stop()
 		}
-		resp["Result"] = startFlag
+		var result = make(map[string]interface{})
+		result["Open"] = startFlag
+		result["Port"] = Parameters.HttpWsPort
+		result["PushBlock"] = httpwebsocket.GetWsPushBlockFlag()
+		resp["Result"] = result
 		return resp
 	}
 	sendRawTransaction := func(cmd map[string]interface{}) map[string]interface{} {
 		resp := SendRawTransaction(cmd)
 		if userid, ok := resp["Userid"].(string); ok && len(userid) > 0 {
-			httpwebsocket.SetTxHashMap(resp["Result"].(string), userid)
+			if result, ok := resp["Result"].(string); ok {
+				httpwebsocket.SetTxHashMap(result, userid)
+			}
 			delete(resp, "Userid")
 		}
 		return resp
@@ -143,8 +149,8 @@ func (rt *restServer) registryMethod() {
 	postMethodMap := map[string]Action{
 		Api_SendRawTransaction:           {name: "sendrawtransaction", handler: sendRawTransaction},
 		Api_SendCustomRecordTxByTransfer: {name: "sendrecord", handler: SendRecorByTransferTransaction},
-		Api_OauthServerAddr:              {name: "setoauthserveraddr", handler: SetOauthServerAddr},
-		Api_NoticeServerAddr:             {name: "setnoticeserveraddr", handler: SetNoticeServerAddr},
+		Api_OauthServerUrl:               {name: "setoauthserverurl", handler: SetOauthServerUrl},
+		Api_NoticeServerUrl:              {name: "setnoticeserverurl", handler: SetNoticeServerUrl},
 		Api_NoticeServerState:            {name: "setpostblock", handler: SetPushBlockFlag},
 		Api_WebsocketState:               {name: "setwebsocketstate", handler: setWebsocketState},
 	}
@@ -155,6 +161,8 @@ func (rt *restServer) getPath(url string) string {
 
 	if strings.Contains(url, strings.TrimRight(Api_Getblockbyheight, ":height")) {
 		return Api_Getblockbyheight
+	} else if strings.Contains(url, strings.TrimRight(Api_Getblockhash, ":height")) {
+		return Api_Getblockhash
 	} else if strings.Contains(url, strings.TrimRight(Api_Getblockbyhash, ":hash")) {
 		return Api_Getblockbyhash
 	} else if strings.Contains(url, strings.TrimRight(Api_Gettransaction, ":hash")) {
@@ -180,7 +188,7 @@ func (rt *restServer) initGetHandler() {
 			auth_type := r.FormValue("auth_type")
 
 			CAkey, errCode, result := rt.checkAccessToken(auth_type, access_token)
-			if errCode > 0 && r.URL.Path != Api_OauthServerAddr {
+			if errCode > 0 && r.URL.Path != Api_OauthServerUrl {
 				resp = ResponsePack(errCode)
 				resp["Result"] = result
 				goto ResponseWrite
@@ -226,7 +234,7 @@ func (rt *restServer) initPostHandler() {
 			auth_type := r.FormValue("auth_type")
 			var resp map[string]interface{}
 			CAkey, errCode, result := rt.checkAccessToken(auth_type, access_token)
-			if errCode > 0 && r.URL.Path != Api_OauthServerAddr {
+			if errCode > 0 && r.URL.Path != Api_OauthServerUrl {
 				resp = ResponsePack(errCode)
 				resp["Result"] = result
 				goto ResponseWrite
@@ -264,7 +272,7 @@ func (rt *restServer) initPostHandler() {
 	for k, _ := range rt.postMap {
 		rt.router.Options(k, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add("Access-Control-Allow-Headers", "Content-Type")
-			w.Header().Set("content-type", "application/json;charset=UTF-8")
+			w.Header().Set("content-type", "application/json;charset=utf-8")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Write([]byte{})
 		})
@@ -274,6 +282,7 @@ func (rt *restServer) initPostHandler() {
 func (rt *restServer) Stop() {
 	if rt.server != nil {
 		rt.server.Shutdown(context.Background())
+		log.Error("Close restful ")
 	}
 }
 func (rt *restServer) Restart(cmd map[string]interface{}) map[string]interface{} {

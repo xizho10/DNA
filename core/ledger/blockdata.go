@@ -159,8 +159,8 @@ func (bd *Blockdata) GetMessage() []byte {
 	return sig.GetHashData(bd)
 }
 
-func (tx *Blockdata) ToArray() ([]byte) {
+func (bd *Blockdata) ToArray() ([]byte) {
 	b := new(bytes.Buffer)
-	tx.Serialize(b)
+	bd.Serialize(b)
 	return b.Bytes()
 }

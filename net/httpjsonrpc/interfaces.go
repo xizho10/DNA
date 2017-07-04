@@ -265,10 +265,12 @@ func sendRawTransaction(params []interface{}) map[string]interface{} {
 		}
 		var txn tx.Transaction
 		if err := txn.Deserialize(bytes.NewReader(hex)); err != nil {
+			log.Error("Deserialize", err)
 			return DnaRpcInvalidTransaction
 		}
 		hash = txn.Hash()
 		if err := VerifyAndSendTx(&txn); err != nil {
+			log.Error("VerifyAndSendTx", err)
 			return DnaRpcInternalError
 		}
 	default:

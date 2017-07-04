@@ -19,7 +19,8 @@ type BookKeepingInfo struct {
 type FunctionCodeInfo struct {
 	Code           string
 	ParameterTypes string
-	ReturnTypes    string
+	ReturnType    string
+	CodeHash       string
 }
 
 type DeployCodeInfo struct {
@@ -29,6 +30,8 @@ type DeployCodeInfo struct {
 	Author      string
 	Email       string
 	Description string
+	Language    string
+	ProgramHash string
 }
 
 //implement PayloadInfo define IssueAssetInfo
@@ -94,14 +97,19 @@ func TransPayloadToHex(p Payload) PayloadInfo {
 	case *payload.TransferAsset:
 	case *payload.DeployCode:
 		obj := new(DeployCodeInfo)
+		obj.Code = new(FunctionCodeInfo)
 		obj.Code.Code = ToHexString(object.Code.Code)
 		obj.Code.ParameterTypes = ToHexString(ContractParameterTypeToByte(object.Code.ParameterTypes))
-		obj.Code.ReturnTypes = ToHexString(ContractParameterTypeToByte(object.Code.ReturnTypes))
+		obj.Code.ReturnType = string(byte(object.Code.ReturnType))
+		codeHash := object.Code.CodeHash()
+		obj.Code.CodeHash = ToHexString(codeHash.ToArray())
 		obj.Name = object.Name
 		obj.CodeVersion = object.CodeVersion
 		obj.Author = object.Author
 		obj.Email = object.Email
 		obj.Description = object.Description
+		obj.Language = string(object.Language)
+		obj.ProgramHash = ToHexString(object.ProgramHash.ToArray())
 		return obj
 	case *payload.RegisterAsset:
 		obj := new(RegisterAssetInfo)

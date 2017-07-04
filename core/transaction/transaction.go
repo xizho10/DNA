@@ -200,6 +200,8 @@ func (tx *Transaction) DeserializeUnsignedWithoutType(r io.Reader) error {
 		tx.Payload = new(payload.BookKeeper)
 	case PrivacyPayload:
 		tx.Payload = new(payload.PrivacyPayload)
+	case DeployCode:
+		tx.Payload = new(payload.DeployCode)
 	case InvokeCode:
 		tx.Payload = new(payload.InvokeCode)
 	case DataFile:
@@ -331,6 +333,8 @@ func (tx *Transaction) GetProgramHashes() ([]Uint160, error) {
 		hashs = append(hashs, astHash)
 	case TransferAsset:
 	case Record:
+	case DeployCode:
+	case InvokeCode:
 	case BookKeeper:
 	case PrivacyPayload:
 		issuer := tx.Payload.(*payload.PrivacyPayload).EncryptAttr.(*payload.EcdhAes256).FromPubkey

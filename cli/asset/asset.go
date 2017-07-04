@@ -17,7 +17,6 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
-
 	"github.com/urfave/cli"
 )
 

@@ -3,15 +3,14 @@ package common
 import (
 	. "DNA/common"
 	. "DNA/common/config"
+	"DNA/common/log"
 	"DNA/core/ledger"
 	tx "DNA/core/transaction"
 	. "DNA/net/httpjsonrpc"
 	Err "DNA/net/httprestful/error"
 	. "DNA/net/protocol"
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -109,7 +108,7 @@ func getBlock(hash Uint256, getTxBytes bool) (interface{}, int64) {
 	if getTxBytes {
 		w := bytes.NewBuffer(nil)
 		block.Serialize(w)
-		return hex.EncodeToString(w.Bytes()), Err.SUCCESS
+		return ToHexString(w.Bytes()), Err.SUCCESS
 	}
 	return GetBlockInfo(block), Err.SUCCESS
 }
@@ -179,12 +178,12 @@ func GetAssetByHash(cmd map[string]interface{}) map[string]interface{} {
 	var hash Uint256
 	err = hash.Deserialize(bytes.NewReader(hex))
 	if err != nil {
-		resp["Error"] = Err.INVALID_TRANSACTION
+		resp["Error"] = Err.INVALID_ASSET
 		return resp
 	}
 	asset, err := ledger.DefaultLedger.Store.GetAsset(hash)
 	if err != nil {
-		resp["Error"] = Err.UNKNOWN_TRANSACTION
+		resp["Error"] = Err.UNKNOWN_ASSET
 		return resp
 	}
 	resp["Result"] = asset
@@ -306,7 +305,7 @@ func GetTransactionByHash(cmd map[string]interface{}) map[string]interface{} {
 	if raw, ok := cmd["Raw"].(string); ok && raw == "1" {
 		w := bytes.NewBuffer(nil)
 		tx.Serialize(w)
-		resp["Result"] = hex.EncodeToString(w.Bytes())
+		resp["Result"] = ToHexString(w.Bytes())
 		return resp
 	}
 	tran := TransArryByteToHexString(tx)
@@ -321,13 +320,13 @@ func SendRawTransaction(cmd map[string]interface{}) map[string]interface{} {
 		resp["Error"] = Err.INVALID_PARAMS
 		return resp
 	}
-	hex, err := hex.DecodeString(str)
+	bys, err := HexToBytes(str)
 	if err != nil {
 		resp["Error"] = Err.INVALID_PARAMS
 		return resp
 	}
 	var txn tx.Transaction
-	if err := txn.Deserialize(bytes.NewReader(hex)); err != nil {
+	if err := txn.Deserialize(bytes.NewReader(bys)); err != nil {
 		resp["Error"] = Err.INVALID_TRANSACTION
 		return resp
 	}
@@ -338,8 +337,8 @@ func SendRawTransaction(cmd map[string]interface{}) map[string]interface{} {
 		return resp
 	}
 	resp["Result"] = ToHexString(hash.ToArrayReverse())
-
-	if txn.TxType == tx.InvokeCode {
+	//TODO 0xd1 -> tx.InvokeCode
+	if txn.TxType == 0xd1 {
 		if userid, ok := cmd["Userid"].(string); ok && len(userid) > 0 {
 			resp["Userid"] = userid
 		}
@@ -354,7 +353,7 @@ func getRecordData(cmd map[string]interface{}) ([]byte, int64) {
 		if !ok {
 			return nil, Err.INVALID_PARAMS
 		}
-		bys, err := hex.DecodeString(str)
+		bys, err := HexToBytes(str)
 		if err != nil {
 			return nil, Err.INVALID_PARAMS
 		}
@@ -429,15 +428,13 @@ func SendRecorByTransferTransaction(cmd map[string]interface{}) map[string]inter
 	transferTx.Attributes = append(transferTx.Attributes, &rcdInner)
 
 	bytesBuf := bytes.NewBuffer(recordData)
-	fmt.Println(len(recordData), hex.EncodeToString(recordData))
+
 	buf := make([]byte, 252)
 	for {
 		n, err := bytesBuf.Read(buf)
 		if err != nil {
-			fmt.Println(err)
 			break
 		}
-		fmt.Println(n)
 		record := tx.NewTxAttribute(tx.Description, buf[0:n])
 		transferTx.Attributes = append(transferTx.Attributes, &record)
 	}
@@ -472,12 +469,12 @@ func SendRecodTransaction(cmd map[string]interface{}) map[string]interface{} {
 }
 
 //config
-func GetOauthServerAddr(cmd map[string]interface{}) map[string]interface{} {
+func GetOauthServerUrl(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
 	resp["Result"] = Parameters.OauthServerAddr
 	return resp
 }
-func SetOauthServerAddr(cmd map[string]interface{}) map[string]interface{} {
+func SetOauthServerUrl(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
 
 	addr, ok := cmd["Addr"].(string)
@@ -498,7 +495,7 @@ func SetOauthServerAddr(cmd map[string]interface{}) map[string]interface{} {
 	resp["Result"] = Parameters.OauthServerAddr
 	return resp
 }
-func GetNoticeServerAddr(cmd map[string]interface{}) map[string]interface{} {
+func GetNoticeServerUrl(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
 	resp["Result"] = Parameters.NoticeServerAddr
 	return resp
@@ -515,7 +512,7 @@ func SetPushBlockFlag(cmd map[string]interface{}) map[string]interface{} {
 	resp["Result"] = pushBlockFlag
 	return resp
 }
-func SetNoticeServerAddr(cmd map[string]interface{}) map[string]interface{} {
+func SetNoticeServerUrl(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
 
 	addr, ok := cmd["Addr"].(string)
@@ -612,7 +609,6 @@ func OauthRequest(method string, cmd map[string]interface{}, url string) (map[st
 	var repMsg = make(map[string]interface{})
 	var response *http.Response
 	var err error
-
 	switch method {
 	case "GET":
 
@@ -650,4 +646,28 @@ func OauthRequest(method string, cmd map[string]interface{}, url string) (map[st
 	}
 
 	return repMsg, err
+}
+func CheckAccessToken(auth_type, access_token string) (cakey string, errCode int64, result interface{}) {
+
+	if len(Parameters.OauthServerAddr) == 0 {
+		return "", Err.SUCCESS, ""
+	}
+	req := make(map[string]interface{})
+	req["token"] = access_token
+	req["auth_type"] = auth_type
+	rep, err := OauthRequest("GET", req, Parameters.OauthServerAddr+"/"+access_token+"?auth_type="+auth_type)
+	if err != nil {
+		log.Error("Oauth timeout:", err)
+		return "", Err.OAUTH_TIMEOUT, rep
+	}
+	if errcode, ok := rep["Error"].(float64); ok && errcode == 0 {
+		result, ok := rep["Result"].(map[string]interface{})
+		if !ok {
+			return "", Err.INVALID_TOKEN, rep
+		}
+		if CAkey, ok := result["CaKey"].(string); ok {
+			return CAkey, Err.SUCCESS, rep
+		}
+	}
+	return "", Err.INVALID_TOKEN, rep
 }

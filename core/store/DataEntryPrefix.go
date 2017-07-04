@@ -1,4 +1,4 @@
-package ChainStore
+package store
 
 // DataEntryPrefix
 type DataEntryPrefix byte
@@ -23,6 +23,8 @@ const (
 	ST_Contract       DataEntryPrefix = 0xc2
 	ST_Storage        DataEntryPrefix = 0xc3
 	ST_ACCOUNT        DataEntryPrefix = 0xc4
+	ST_Asset          DataEntryPrefix = 0xc5
+	ST_Validator      DataEntryPrefix = 0xc6
 
 	//SYSTEM
 	SYS_CurrentBlock  DataEntryPrefix = 0x40

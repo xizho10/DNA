@@ -1,6 +1,7 @@
 package session
 
 import (
+	"github.com/gorilla/websocket"
 	"sync"
 )
 
@@ -14,45 +15,56 @@ func NewSessionList() *SessionList {
 		mapOnlineList: make(map[string]*Session),
 	}
 }
-
-func (sl *SessionList) addOnlineSession(session *Session) {
-	if session.GetSessionId() != "" {
-		sl.Lock()
-		defer sl.Unlock()
-		sl.mapOnlineList[session.GetSessionId()] = session
+func (sl *SessionList) NewSession(wsConn *websocket.Conn) (session *Session, err error) {
+	session, err = newSession(wsConn)
+	if err == nil {
+		sl.addOnlineSession(session)
 	}
+	return session, err
+}
+func (sl *SessionList) CloseSession(session *Session) {
+	if session == nil {
+		return
+	}
+	sl.removeSession(session)
+	session.close()
+}
+func (sl *SessionList) addOnlineSession(session *Session) {
+	if session.GetSessionId() == "" {
+		return
+	}
+	sl.Lock()
+	defer sl.Unlock()
+	sl.mapOnlineList[session.GetSessionId()] = session
 }
 
 func (sl *SessionList) removeSession(iSession *Session) (err error) {
-
-	if iSession.GetSessionId() != "" {
-		sl.Lock()
-		defer sl.Unlock()
-		delete(sl.mapOnlineList, iSession.GetSessionId())
-	}
-	return err
+	return sl.removeSessionById(iSession.GetSessionId())
 }
 
 func (sl *SessionList) removeSessionById(sSessionId string) (err error) {
 
-	if sSessionId != "" {
-		sl.Lock()
-		defer sl.Unlock()
-		delete(sl.mapOnlineList, sSessionId)
+	if sSessionId == "" {
+		return err
 	}
-	return err
+	sl.Lock()
+	defer sl.Unlock()
+	delete(sl.mapOnlineList, sSessionId)
+	return nil
 }
 
 func (sl *SessionList) GetSessionById(sSessionId string) *Session {
 	sl.RLock()
 	defer sl.RUnlock()
-	session, bOk := sl.mapOnlineList[sSessionId]
-	if bOk {
+	if session, ok := sl.mapOnlineList[sSessionId]; ok {
 		return session
 	}
 	return nil
 
 }
 func (sl *SessionList) GetSessionList() map[string]*Session {
-	return sl.mapOnlineList
+	sl.Lock()
+	defer sl.Unlock()
+	list := sl.mapOnlineList
+	return list
 }

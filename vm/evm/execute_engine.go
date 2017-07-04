@@ -4,8 +4,8 @@ import (
 	"DNA/common"
 	"sync/atomic"
 	"fmt"
-	"DNA/vm/evm/statedb"
 	"math/big"
+	"DNA/smartcontract/storage"
 )
 
 type ExecutionEngine struct {
@@ -14,24 +14,20 @@ type ExecutionEngine struct {
 	stack *Stack
 	pc uint64
 	memory *Memory
-	StateDB StateDB
+	DBCache storage.DBCache
 	abort int32
 	JumpTable [256]OpExec
 	time *big.Int
 	blockNumber *big.Int
 }
 
-func NewExecutionEngine(db *statedb.StateDB, time *big.Int, blockNumber *big.Int) *ExecutionEngine {
-	var e ExecutionEngine
-	if db == nil {
-		e.StateDB = statedb.NewStateDB()
-	} else {
-		e.StateDB = db
+func NewExecutionEngine(dbCache storage.DBCache, time *big.Int, blockNumber *big.Int, gas common.Fixed64) *ExecutionEngine {
+	return &ExecutionEngine {
+		DBCache: dbCache,
+		time: time,
+		blockNumber: blockNumber,
+		JumpTable: NewOpExecList(),
 	}
-	e.time = time
-	e.blockNumber = blockNumber
-	e.JumpTable = NewOpExecList()
-	return &e
 }
 
 func (e *ExecutionEngine) Create(caller common.Uint160, code []byte) (ret []byte, err error) {
@@ -40,13 +36,16 @@ func (e *ExecutionEngine) Create(caller common.Uint160, code []byte) (ret []byte
 	e.contract.SetCode(code, codeHash)
 	ret, err = e.run()
 	if err != nil { return nil, err }
-	e.StateDB.SetCode(codeHash, ret)
+	e.DBCache.SetCode(codeHash, ret)
 	return nil, nil
 }
 
 func (e *ExecutionEngine) Call(caller common.Uint160, codeHash common.Uint160, input []byte) (ret []byte, err error) {
 	e.contract = NewContract(caller)
-	code := e.StateDB.GetCode(codeHash)
+	code, err := e.DBCache.GetCode(codeHash)
+	if err != nil {
+		return nil, err
+	}
 	e.contract.SetCallCode(code, input, codeHash)
 	ret, err = e.run()
 	if err != nil { return nil, err }

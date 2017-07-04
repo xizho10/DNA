@@ -9,7 +9,7 @@ import (
 	"DNA/vm/evm"
 	"math/big"
 	"DNA/crypto"
-	"DNA/client"
+	client "DNA/account"
 )
 
 const (
@@ -27,9 +27,9 @@ func TestEvm(t *testing.T) {
 		t.Fatal("input error:", err)
 	}
 	fmt.Println("input:", input)
-	evm := evm.NewExecutionEngine(nil, big.NewInt(1), big.NewInt(1))
+	evm := evm.NewExecutionEngine(nil, big.NewInt(1), big.NewInt(1), common.Fixed64(0))
 	code, _ := common.HexToBytes(BIN)
-	crypto.SetAlg(crypto.P256R1)
+	crypto.SetAlg(fmt.Sprintf("%v", crypto.P256R1))
 	account, _ := client.NewAccount()
 
 	codeHash, _ := common.ToCodeHash(code)

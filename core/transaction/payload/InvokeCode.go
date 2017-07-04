@@ -3,31 +3,48 @@ package payload
 import (
 	"io"
 	"DNA/common/serialization"
+	"DNA/common"
 )
 
 type InvokeCode struct {
-	Code []byte
+	CodeHash common.Uint160
+	Code     []byte
+	ProgramHash common.Uint160
 }
 
 func (ic *InvokeCode) Data() []byte {
-
 	return []byte{0}
 }
 
 func (ic *InvokeCode) Serialize(w io.Writer) error {
+	ic.CodeHash.Serialize(w)
 	err := serialization.WriteVarBytes(w, ic.Code)
 	if err != nil {
 		return err
 	}
-
+	_, err = ic.ProgramHash.Serialize(w)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (ic *InvokeCode) Deserialize(r io.Reader) error {
+	u := new(common.Uint160)
+	if err := u.Deserialize(r); err != nil {
+		return err
+	}
+	ic.CodeHash = *u
 	code, err := serialization.ReadVarBytes(r)
 	if err != nil {
 		return err
 	}
 	ic.Code = code
+
+	err = u.Deserialize(r)
+	if err != nil {
+		return err
+	}
+	ic.ProgramHash = *u
 	return nil
 }

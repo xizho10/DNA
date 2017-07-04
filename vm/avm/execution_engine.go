@@ -63,16 +63,16 @@ type ExecutionEngine struct {
 	gas             int64
 }
 
-func (e *ExecutionEngine) Create(code []byte, input []byte) ([]byte, error) {
-	e.LoadCode(code, false)
-	e.LoadCode(input, true)
-	e.Execute()
+func (e *ExecutionEngine) Create(caller common.Uint160, code []byte) ([]byte, error) {
 	return nil, nil
 }
 
-func (e *ExecutionEngine) Call(codeHash common.Uint160, input []byte) ([]byte, error) {
+func (e *ExecutionEngine) Call(caller common.Uint160, codeHash common.Uint160, input []byte) ([]byte, error) {
 	e.LoadCode(input, false)
-	e.Execute()
+	err := e.Execute()
+	if err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
@@ -163,16 +163,16 @@ func (e *ExecutionEngine) StepInto() error {
 	}
 	e.opCode = opCode
 	e.context = context
-	if !e.checkStackSize() {
-		return ErrOverLimitStack
-	}
-	if !e.checkItemSize() {
-		return ErrOverMaxItemSize
-	}
-	e.gas -= e.getPrice() * ratio
-	if e.gas < 0 {
-		return ErrOutOfGas
-	}
+	//if !e.checkStackSize() {
+	//	return ErrOverLimitStack
+	//}
+	//if !e.checkItemSize() {
+	//	return ErrOverMaxItemSize
+	//}
+	//e.gas -= e.getPrice() * ratio
+	//if e.gas < 0 {
+	//	return ErrOutOfGas
+	//}
 	state, err := e.ExecuteOp()
 	if state == HALT || state == FAULT {
 		e.state = state

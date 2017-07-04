@@ -17,32 +17,21 @@ type FunctionCode struct {
 	ParameterTypes []ContractParameterType
 
 	// Contract return type list
-	ReturnTypes []ContractParameterType
+	ReturnType ContractParameterType
 
-	codeHash *Uint160
-}
-
-func NewFunctionCode(code []byte, parameterTypes []ContractParameterType, returnType []ContractParameterType, codeHash *Uint160) *FunctionCode {
-	var functionCode FunctionCode
-	functionCode.Code = code
-	functionCode.ParameterTypes = parameterTypes
-	functionCode.ReturnTypes = returnType
-	functionCode.codeHash = codeHash
-	return &functionCode
+	codeHash Uint160
 }
 
 // method of SerializableData
 func (fc *FunctionCode) Serialize(w io.Writer) error {
-	err := serialization.WriteVarBytes(w, ContractParameterTypeToByte(fc.ReturnTypes))
+	err := serialization.WriteByte(w, byte(fc.ReturnType))
 	if err != nil {
 		return err
 	}
-
 	err = serialization.WriteVarBytes(w, ContractParameterTypeToByte(fc.ParameterTypes))
 	if err != nil {
 		return err
 	}
-
 	err = serialization.WriteVarBytes(w,fc.Code)
 	if err != nil {
 		return err
@@ -52,11 +41,11 @@ func (fc *FunctionCode) Serialize(w io.Writer) error {
 
 // method of SerializableData
 func (fc *FunctionCode) Deserialize(r io.Reader) error {
-	returnTypes, err := serialization.ReadVarBytes(r)
+	returnType, err := serialization.ReadByte(r)
 	if err != nil {
 		return err
 	}
-	fc.ReturnTypes = ByteToContractParameterType(returnTypes)
+	fc.ReturnType = ContractParameterType(returnType)
 
 	parameterTypes, err := serialization.ReadVarBytes(r)
 	if err != nil {
@@ -86,20 +75,21 @@ func (fc *FunctionCode) GetParameterTypes() []ContractParameterType {
 
 // method of ICode
 // Get the list of return value
-func (fc *FunctionCode) GetReturnType() []ContractParameterType {
-	return fc.ReturnTypes
+func (fc *FunctionCode) GetReturnType() ContractParameterType {
+	return fc.ReturnType
 }
 
 // method of ICode
 // Get the hash of the smart contract
-func (fc *FunctionCode) CodeHash() *Uint160 {
-	if fc.codeHash == nil {
-		hash, err := ToCodeHash(fc.Code)
+func (fc *FunctionCode) CodeHash() Uint160 {
+	u160 := Uint160{}
+	if fc.codeHash == u160 {
+		u160, err := ToCodeHash(fc.Code)
 		if err != nil {
 			log.Debug( fmt.Sprintf("[FunctionCode] ToCodeHash err=%s",err) )
-			return &Uint160{0}
+			return u160
 		}
-		fc.codeHash = &hash
+		fc.codeHash = u160
 	}
 	return fc.codeHash
 }

@@ -6,10 +6,9 @@ import (
 	"encoding/json"
 	"reflect"
 	"strings"
-	"DNA/vm/evm/common"
 	"encoding/binary"
 	"math/big"
-	. "DNA/common"
+	"DNA/common"
 )
 
 var (
@@ -222,7 +221,7 @@ func toGoType(i int, t Argument, output []byte) (interface{}, error) {
 	case BoolTy:
 		return !allZero(returnOutput), nil
 	case AddressTy:
-		return BytesToUint160(returnOutput), nil
+		return common.BytesToUint160(returnOutput), nil
 	case HashTy:
 		return common.BytesToHash(returnOutput), nil
 	case BytesTy, FixedBytesTy, FunctionTy:
@@ -298,7 +297,7 @@ func toGoSlice(i int, t Argument, output []byte) (interface{}, error) {
 			refSlice = reflect.ValueOf([]*big.Int(nil))
 		}
 	case AddressTy:
-		refSlice = reflect.ValueOf([]Uint160(nil))
+		refSlice = reflect.ValueOf([]common.Uint160(nil))
 	case HashTy:
 		refSlice = reflect.ValueOf([]common.Hash(nil))
 	case FixedBytesTy:
@@ -344,7 +343,7 @@ func toGoSlice(i int, t Argument, output []byte) (interface{}, error) {
 		case BoolTy:
 			inter = !allZero(returnOutput)
 		case AddressTy:
-			inter = BytesToUint160(returnOutput)
+			inter = common.BytesToUint160(returnOutput)
 		case HashTy:
 			inter = common.BytesToHash(returnOutput)
 		case FixedBytesTy:

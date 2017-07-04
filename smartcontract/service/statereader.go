@@ -182,7 +182,7 @@ func (s *StateReader) BlockChainGetTransaction(e *avm.ExecutionEngine) (bool, er
 
 func (s *StateReader) BlockChainGetAccount(e *avm.ExecutionEngine) (bool, error) {
 	d := avm.PopByteArray(e)
-	hash, err := common.Uint256ParseFromBytes(d)
+	hash, err := common.Uint160ParseFromBytes(d)
 	if err != nil { return false, err }
 	account, err := ledger.DefaultLedger.Store.GetAccount(hash)
 	avm.PushData(e, account)
@@ -208,7 +208,7 @@ func (s *StateReader) HeaderGetHash(e *avm.ExecutionEngine) (bool, error) {
 	if d == nil {
 		return false, fmt.Errorf("%v", "Get header error in function headergethash!", )
 	}
-	h := d.(*ledger.Header).Blockdata.Hash()
+   	h := d.(*ledger.Header).Blockdata.Hash()
 	avm.PushData(e, h.ToArray())
 	return true, nil
 }
@@ -391,7 +391,7 @@ func (s *StateReader) AttributeGetData(e *avm.ExecutionEngine) (bool, error) {
 		return false, fmt.Errorf("%v", "Get Attribute error in function AttributeGetUsage")
 	}
 	attribute := d.(*transaction.TxAttribute)
-	avm.PushData(e, attribute.Date)
+	avm.PushData(e, attribute.Data)
 	return true, nil
 }
 

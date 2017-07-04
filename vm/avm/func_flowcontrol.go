@@ -51,9 +51,9 @@ func opAppCall(e *ExecutionEngine) (VMState, error) {
 		return FAULT, nil
 	}
 	codeHash := e.context.OpReader.ReadBytes(20)
-	code := e.table.GetCode(codeHash)
+	code, err := e.table.GetCode(codeHash)
 	if code == nil {
-		return FAULT, nil
+		return FAULT, err
 	}
 	if e.opCode == TAILCALL {
 		e.invocationStack.Pop()

@@ -27,7 +27,7 @@ type ILedgerStore interface {
 	SaveAsset(assetid Uint256, asset *Asset) error
 	GetAsset(hash Uint256) (*Asset, error)
 
-	GetContract(hash []byte) ([]byte, error)
+	GetContract(codeHash Uint160) ([]byte, error)
 	GetStorage(key []byte) ([]byte, error)
 	GetAccount(programHash Uint160) (*states.AccountState, error)
 

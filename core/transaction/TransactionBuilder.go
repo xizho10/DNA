@@ -7,6 +7,7 @@ import (
 	"DNA/core/contract/program"
 	"DNA/core/transaction/payload"
 	"DNA/crypto"
+	"DNA/smartcontract/types"
 )
 
 //initial a new transaction with asset registration payload
@@ -146,7 +147,7 @@ func NewDataFileTransaction(path string, fileName string, note string, issuer *c
 }
 
 //initial a new transaction with publish payload
-func NewDeployTransaction(fc *code.FunctionCode, name string, codeversion string, author string, email string, desp string) (*Transaction, error) {
+func NewDeployTransaction(fc *code.FunctionCode, programHash common.Uint160, name, codeversion, author, email, desp string, language types.LangType) (*Transaction, error) {
 	//TODO: check arguments
 	DeployCodePayload := &payload.DeployCode{
 		Code:        fc,
@@ -155,6 +156,8 @@ func NewDeployTransaction(fc *code.FunctionCode, name string, codeversion string
 		Author:      author,
 		Email:       email,
 		Description: desp,
+		Language: language,
+		ProgramHash: programHash,
 	}
 
 	return &Transaction{
@@ -168,10 +171,11 @@ func NewDeployTransaction(fc *code.FunctionCode, name string, codeversion string
 }
 
 //initial a new transaction with invoke payload
-func NewInvokeTransaction(fc []byte) (*Transaction, error) {
+func NewInvokeTransaction(fc []byte, codeHash common.Uint160) (*Transaction, error) {
 	//TODO: check arguments
 	InvokeCodePayload := &payload.InvokeCode{
 		Code: fc,
+		CodeHash: codeHash,
 	}
 
 	return &Transaction{
