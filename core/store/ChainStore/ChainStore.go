@@ -818,17 +818,12 @@ func (bd *ChainStore) persist(b *Block) error {
 			su := b.Transactions[i].Payload.(*payload.StateUpdate)
 
 			// stateKey
-			statePrefix := []byte{byte(ST_STATES)}
-			stateKey := append(statePrefix, su.Namespace...)
-			stateKey = append(stateKey, su.Key...)
-			//stateValueOld, err_get := bd.st.Get(stateKey)
-
-			// stateValue
-			//stateValue := bytes.NewBuffer(nil)
-			//serialization.WriteVarBytes(stateValue, su.Value)
+			stateKey := bytes.NewBuffer(nil)
+			stateKey.WriteByte(byte(ST_STATES))
+			serialization.WriteVarBytes(stateKey, su.Namespace)
+			serialization.WriteVarBytes(stateKey, su.Key)
 
 			// verify tx signer public is in StateUpdater list.
-			//publicKey := b.Transactions[i].Programs[0].Parameter[1:34]
 			log.Trace(fmt.Sprintf("StateUpdate tx publickey: %x", su.Updater))
 
 			stateUpdater, err := bd.GetStateUpdater()
@@ -853,7 +848,7 @@ func (bd *ChainStore) persist(b *Block) error {
 			// if not found in store, put value to the key.
 			// if found in store, rewrite value.
 			log.Trace(fmt.Sprintf("[persist] StateUpdate modify, key: %x, value:%x", stateKey, su.Value))
-			bd.st.BatchPut(stateKey, su.Value)
+			bd.st.BatchPut(stateKey.Bytes(), su.Value)
 		}
 
 		for index := 0; index < len(b.Transactions[i].Outputs); index++ {
@@ -1397,10 +1392,12 @@ func (bd *ChainStore) IsStateUpdaterVaild(Tx *tx.Transaction) bool {
 func (bd *ChainStore) GetState(namespace []byte, key []byte) ([]byte, error) {
 
 	// stateKey
-	statePrefix := []byte{byte(ST_STATES)}
-	stateKey := append(statePrefix, namespace...)
-	stateKey = append(stateKey, key...)
-	stateValue, err := bd.st.Get(stateKey)
+	stateKey := bytes.NewBuffer(nil)
+	stateKey.WriteByte(byte(ST_STATES))
+	serialization.WriteVarBytes(stateKey, namespace)
+	serialization.WriteVarBytes(stateKey, key)
+
+	stateValue, err := bd.st.Get(stateKey.Bytes())
 	if err != nil {
 		return nil, err
 	}

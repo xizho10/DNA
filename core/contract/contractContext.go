@@ -8,6 +8,7 @@ import (
 	"DNA/crypto"
 	_ "DNA/errors"
 	"errors"
+	"fmt"
 	"math/big"
 	"sort"
 )
@@ -46,6 +47,13 @@ func (cxt *ContractContext) Add(contract *Contract, index int, parameter []byte)
 	if i < 0 {
 		log.Warn("Program Hash is not exist, using 0 by default")
 		i = 0
+	}
+	////////////////////////////
+	if len(cxt.Codes) == 0 {
+		fmt.Println("########cxt.Codes#######", len(contract.Code), len(parameter), index)
+		cxt.Codes = make([][]byte, 1)
+
+		cxt.Parameters = make([][][]byte, 1)
 	}
 	if cxt.Codes[i] == nil {
 		cxt.Codes[i] = contract.Code

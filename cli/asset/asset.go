@@ -282,7 +282,6 @@ func assetAction(c *cli.Context) error {
 			return nil
 		}
 	}
-	fmt.Printf("SendRawData: %s\n", txHex)
 	resp, err := httpjsonrpc.Call(Address(), "sendrawtransaction", 0, []interface{}{txHex})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

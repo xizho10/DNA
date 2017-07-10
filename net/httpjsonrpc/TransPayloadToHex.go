@@ -67,6 +67,15 @@ type DataFileInfo struct {
 	Note     string
 	Issuer   IssuerInfo
 }
+type UpdaterInfo struct {
+	X, Y string
+}
+type StateUpdateInfo struct {
+	Namespace string
+	Key       string
+	Value     string
+	Updater   UpdaterInfo
+}
 
 type PrivacyPayloadInfo struct {
 	PayloadType uint8
@@ -133,6 +142,15 @@ func TransPayloadToHex(p Payload) PayloadInfo {
 		obj.Issuer.X = object.Issuer.X.String()
 		obj.Issuer.Y = object.Issuer.Y.String()
 		return obj
+	case *payload.StateUpdate:
+		obj := new(StateUpdateInfo)
+		obj.Namespace = ToHexString(object.Namespace)
+		obj.Key = ToHexString(object.Key)
+		obj.Value = ToHexString(object.Value)
+		obj.Updater.X = object.Updater.X.String()
+		obj.Updater.Y = object.Updater.Y.String()
+		return obj
 	}
+
 	return nil
 }

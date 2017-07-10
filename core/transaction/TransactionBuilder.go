@@ -142,3 +142,21 @@ func NewDataFileTransaction(path string, fileName string, note string, issuer *c
 		Programs:      []*program.Program{},
 	}, nil
 }
+func NewStateUpdateTransaction(namespace, key, value []byte, updater *crypto.PubKey) (*Transaction, error) {
+	//TODO: check arguments
+	stateUpdatePayload := &payload.StateUpdate{
+		Namespace: namespace,
+		Key:       key,
+		Value:     value,
+		Updater:   updater,
+	}
+
+	return &Transaction{
+		TxType:        StateUpdate,
+		Payload:       stateUpdatePayload,
+		Attributes:    []*TxAttribute{},
+		UTXOInputs:    []*UTXOTxInput{},
+		BalanceInputs: []*BalanceTxInput{},
+		Programs:      []*program.Program{},
+	}, nil
+}
