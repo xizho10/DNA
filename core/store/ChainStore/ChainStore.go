@@ -738,6 +738,7 @@ func (bd *ChainStore) persist(b *Block) error {
 			b.Transactions[i].TxType == tx.IssueAsset ||
 			b.Transactions[i].TxType == tx.TransferAsset ||
 			b.Transactions[i].TxType == tx.Record ||
+			b.Transactions[i].TxType == tx.StateUpdate ||
 			b.Transactions[i].TxType == tx.BookKeeper ||
 			b.Transactions[i].TxType == tx.PrivacyPayload ||
 			b.Transactions[i].TxType == tx.BookKeeping ||
@@ -763,6 +764,47 @@ func (bd *ChainStore) persist(b *Block) error {
 				} else {
 					quantities[assetId] = value
 				}
+			}
+		}
+
+		if b.Transactions[i].TxType == tx.StateUpdate {
+			su := b.Transactions[i].Payload.(*payload.StateUpdate)
+
+			// stateKey
+			statePrefix := []byte{byte(ST_STATES)}
+			stateKey := append(statePrefix, su.Namespace...)
+			stateKey = append(stateKey, su.Key...)
+			//stateValueOld, err_get := bd.st.Get(stateKey)
+			_, err_get := bd.st.Get(stateKey)
+
+			// stateValue
+			stateValue := bytes.NewBuffer(nil)
+			serialization.WriteVarBytes(stateValue, su.Value)
+
+			if err_get != nil {
+				// if not found in store, put value to the key.
+
+				log.Trace(fmt.Sprintf("[persist] StateUpdate new, key: %x, value:%x", stateKey, stateValue.Bytes()))
+				bd.st.BatchPut(stateKey, stateValue.Bytes())
+			} else {
+				// if found in store, must verify the publickey first.
+
+				//r := bytes.NewBuffer(stateValueOld)
+				//_, err := serialization.ReadVarBytes(r)
+				//if err != nil {
+				//	return err
+				//}
+				//updater, err := serialization.ReadVarBytes(r)
+				//if err != nil {
+				//	return err
+				//}
+
+				//if bytes.Compare(updater, b.Transactions[i].Programs[0].Parameter[1:34]) == 0 && bytes.Compare(updater, su.Updater.ToArray()) == 0 {
+				//	bd.st.BatchPut(stateKey, stateValue.Bytes())
+				//}
+
+				log.Trace(fmt.Sprintf("[persist] StateUpdate modify, key: %x, value:%x", stateKey, stateValue.Bytes()))
+				bd.st.BatchPut(stateKey, stateValue.Bytes())
 			}
 		}
 

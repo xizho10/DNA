@@ -61,6 +61,7 @@ func main() {
 	}
 	log.Debug("The Node's PublicKey ", acct.PublicKey)
 	ledger.StandbyBookKeepers = account.GetBookKeepers()
+	ledger.StateUpdater = account.GetStateUpdater()
 
 	log.Info("3. BlockChain init")
 	blockChain, err = ledger.NewBlockchainWithGenesisBlock(ledger.StandbyBookKeepers)
