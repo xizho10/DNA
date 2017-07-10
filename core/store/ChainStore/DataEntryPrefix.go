@@ -30,6 +30,9 @@ const (
 	SYS_CurrentHeader     DataEntryPrefix = 0x41
 	SYS_CurrentBookKeeper DataEntryPrefix = 0x42
 
+	// CA
+	CA_StateUpdater DataEntryPrefix = 0x50
+
 	//CONFIG
 	CFG_Version DataEntryPrefix = 0xf0
 )

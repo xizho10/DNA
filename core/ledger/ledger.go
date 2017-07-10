@@ -27,6 +27,10 @@ func (l *Ledger) IsDoubleSpend(Tx *tx.Transaction) bool {
 	return DefaultLedger.Store.IsDoubleSpend(Tx)
 }
 
+func (l *Ledger) IsStateUpdaterVaild(Tx *tx.Transaction) bool {
+	return DefaultLedger.Store.IsStateUpdaterVaild(Tx)
+}
+
 //Get the DefaultLedger.
 //Note: the later version will support the mutiLedger.So this func mybe expired later.
 func GetDefaultLedger() (*Ledger, error) {

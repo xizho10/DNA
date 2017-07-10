@@ -343,6 +343,18 @@ func (tx *Transaction) GetProgramHashes() ([]Uint160, error) {
 			return nil, NewDetailErr(err, ErrNoCode, "[Transaction], GetProgramHashes ToCodeHash failed.")
 		}
 		hashs = append(hashs, astHash)
+	case StateUpdate:
+		updater := tx.Payload.(*payload.StateUpdate).Updater
+		signatureRedeemScript, err := contract.CreateSignatureRedeemScript(updater)
+		if err != nil {
+			return nil, NewDetailErr(err, ErrNoCode, "[Transaction], StateUpdate GetProgramHashes CreateSignatureRedeemScript failed.")
+		}
+
+		astHash, err := ToCodeHash(signatureRedeemScript)
+		if err != nil {
+			return nil, NewDetailErr(err, ErrNoCode, "[Transaction], StateUpdate GetProgramHashes ToCodeHash failed.")
+		}
+		hashs = append(hashs, astHash)
 	default:
 	}
 	//remove dupilicated hashes

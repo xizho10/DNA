@@ -2,6 +2,7 @@ package payload
 
 import (
 	"DNA/common/serialization"
+	"DNA/crypto"
 	. "DNA/errors"
 	"errors"
 	"io"
@@ -11,6 +12,7 @@ type StateUpdate struct {
 	Namespace []byte
 	Key       []byte
 	Value     []byte
+	Updater   *crypto.PubKey
 }
 
 func (su *StateUpdate) Data() []byte {
@@ -33,6 +35,8 @@ func (su *StateUpdate) Serialize(w io.Writer) error {
 		return NewDetailErr(err, ErrNoCode, "[StateUpdate], value serialize failed.")
 	}
 
+	su.Updater.Serialize(w)
+
 	return nil
 }
 
@@ -54,11 +58,11 @@ func (su *StateUpdate) Deserialize(r io.Reader) error {
 		return NewDetailErr(errors.New("[StateUpdate], value deserialize failed."), ErrNoCode, "")
 	}
 
-	//su.Updater = *new(common.Uint160)
-	//err = su.Updater.Deserialize(r)
-	//if err != nil {
-	//	return NewDetailErr(err, ErrNoCode, "[StateUpdate], updater Deserialize failed.")
-	//}
+	su.Updater = new(crypto.PubKey)
+	err = su.Updater.DeSerialize(r)
+	if err != nil {
+		return NewDetailErr(err, ErrNoCode, "[StateUpdate], updater Deserialize failed.")
+	}
 
 	return nil
 }
