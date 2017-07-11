@@ -187,6 +187,62 @@ func GetAssetByHash(cmd map[string]interface{}) map[string]interface{} {
 }
 func GetBalance(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
+	addr := cmd["Addr"].(string)
+
+	var programHash Uint160
+	programHash, err := ToScriptHash(addr)
+	if err != nil {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	unspends, err := ledger.DefaultLedger.Store.GetUnspentsFromProgramHash(programHash)
+	var balance Fixed64 = 0
+	for _, u := range unspends {
+		for _, v := range u {
+			balance = balance + v.Value
+		}
+	}
+	resp["Result"] = balance
+	return resp
+}
+func GetUnspends(cmd map[string]interface{}) map[string]interface{} {
+	resp := ResponsePack(Err.SUCCESS)
+	addr := cmd["Addr"].(string)
+
+	var programHash Uint160
+
+	programHash, err := ToScriptHash(addr)
+	if err != nil {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	type UTXOUnspentInfo struct {
+		Txid  string
+		Index uint32
+		Value Fixed64
+	}
+	type Result struct {
+		AssetId   string
+		AssetName string
+		Utxo      []UTXOUnspentInfo
+	}
+	var results []Result
+	unspends, err := ledger.DefaultLedger.Store.GetUnspentsFromProgramHash(programHash)
+
+	for k, u := range unspends {
+		assetid := ToHexString(k.ToArrayReverse())
+		asset, err := ledger.DefaultLedger.Store.GetAsset(k)
+		if err != nil {
+			resp["Error"] = Err.INTERNAL_ERROR
+			return resp
+		}
+		var unspendsInfo []UTXOUnspentInfo
+		for _, v := range u {
+			unspendsInfo = append(unspendsInfo, UTXOUnspentInfo{ToHexString(v.Txid.ToArrayReverse()), v.Index, v.Value})
+		}
+		results = append(results, Result{assetid, asset.Name, unspendsInfo})
+	}
+	resp["Result"] = results
 	return resp
 }
 func GetUnspendOutput(cmd map[string]interface{}) map[string]interface{} {
@@ -196,18 +252,12 @@ func GetUnspendOutput(cmd map[string]interface{}) map[string]interface{} {
 
 	var programHash Uint160
 	var assetHash Uint256
-
-	bys, err := HexToBytesReverse(addr)
+	programHash, err := ToScriptHash(addr)
 	if err != nil {
 		resp["Error"] = Err.INVALID_PARAMS
 		return resp
 	}
-	if err := programHash.Deserialize(bytes.NewReader(bys)); err != nil {
-		resp["Error"] = Err.INVALID_PARAMS
-		return resp
-	}
-
-	bys, err = HexToBytesReverse(assetid)
+	bys, err := HexToBytesReverse(assetid)
 	if err != nil {
 		resp["Error"] = Err.INVALID_PARAMS
 		return resp
@@ -232,70 +282,6 @@ func GetUnspendOutput(cmd map[string]interface{}) map[string]interface{} {
 		UTXOoutputs = append(UTXOoutputs, UTXOUnspentInfo{Txid: ToHexString(v.Txid.ToArrayReverse()), Index: v.Index, Value: v.Value})
 	}
 	resp["Result"] = UTXOoutputs
-	return resp
-
-	type TxOutputInfo struct {
-		AssetID     string
-		Value       int64
-		ProgramHash string
-	}
-	outputs := make(map[string]*TxOutputInfo)
-	height := ledger.DefaultLedger.GetLocalBlockChainHeight()
-	var i uint32
-	// construct global UTXO table
-	for i = 0; i <= height; i++ {
-		block, err := ledger.DefaultLedger.GetBlockWithHeight(i)
-		if err != nil {
-			resp["Error"] = Err.INTERNAL_ERROR
-			return resp
-		}
-		// skip the bookkeeping transaction
-		for _, t := range block.Transactions[1:] {
-			// skip the register transaction
-			if t.TxType == tx.RegisterAsset {
-				continue
-			}
-			txHash := t.Hash()
-			txHashHex := ToHexString(txHash.ToArrayReverse())
-			for i, output := range t.Outputs {
-				if output.AssetID.CompareTo(assetHash) == 0 &&
-					output.ProgramHash.CompareTo(programHash) == 0 {
-					key := txHashHex + ":" + strconv.Itoa(i)
-					asset := ToHexString(output.AssetID.ToArrayReverse())
-					pHash := ToHexString(output.ProgramHash.ToArrayReverse())
-					value := int64(output.Value)
-					info := &TxOutputInfo{
-						asset,
-						value,
-						pHash,
-					}
-					outputs[key] = info
-				}
-			}
-		}
-	}
-	// delete spent output from global UTXO table
-	height = ledger.DefaultLedger.GetLocalBlockChainHeight()
-	for i = 0; i <= height; i++ {
-		block, err := ledger.DefaultLedger.GetBlockWithHeight(i)
-		if err != nil {
-			return DnaRpcInternalError
-		}
-		// skip the bookkeeping transaction
-		for _, t := range block.Transactions[1:] {
-			// skip the register transaction
-			if t.TxType == tx.RegisterAsset {
-				continue
-			}
-			for _, input := range t.UTXOInputs {
-				refer := ToHexString(input.ReferTxID.ToArrayReverse())
-				index := strconv.Itoa(int(input.ReferTxOutputIndex))
-				key := refer + ":" + index
-				delete(outputs, key)
-			}
-		}
-	}
-	resp["Result"] = outputs
 	return resp
 }
 

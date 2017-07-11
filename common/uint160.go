@@ -1,15 +1,15 @@
 package common
 
 import (
+	"DNA/common/log"
 	. "DNA/errors"
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"github.com/itchyny/base58-go"
 	"io"
 	"math/big"
-
-	"github.com/itchyny/base58-go"
 )
 
 const UINT160SIZE int = 20
@@ -99,4 +99,35 @@ func Uint160ParseFromBytes(f []byte) (Uint160, error) {
 		hash[i] = f[i]
 	}
 	return Uint160(hash), nil
+}
+func ToScriptHash(address string) (Uint160, error) {
+	encoding := base58.BitcoinEncoding
+
+	decoded, err := encoding.Decode([]byte(address))
+	if err != nil {
+		return Uint160{}, err
+	}
+
+	x, _ := new(big.Int).SetString(string(decoded), 10)
+	log.Tracef("[ToAddress] x: ", x.Bytes())
+
+	ph, err := Uint160ParseFromBytes(x.Bytes()[1:21])
+	if err != nil {
+		return Uint160{}, err
+	}
+
+	log.Tracef("[AddressToProgramHash] programhash: %x", ph.ToArray())
+
+	addr, err := ph.ToAddress()
+	if err != nil {
+		return Uint160{}, err
+	}
+
+	log.Tracef("[AddressToProgramHash] address: %s", addr)
+
+	if addr != address {
+		return Uint160{}, errors.New("[AddressToProgramHash]: decode address verify failed.")
+	}
+
+	return ph, nil
 }
