@@ -39,10 +39,12 @@ const (
 	Api_Getblockbyhash     = "/api/v1/block/details/hash/:hash"
 	Api_Getblockheight     = "/api/v1/block/height"
 	Api_Getblockhash       = "/api/v1/block/hash/:height"
+	Api_GetTotalIssued     = "/api/v1/totalissued/:assetid"
 	Api_Gettransaction     = "/api/v1/transaction/:hash"
 	Api_Getasset           = "/api/v1/asset/:hash"
-	Api_GetBalance         = "/api/v1/asset/balance/:addr"
-	Api_GetUTXO            = "/api/v1/asset/utxo/:addr/:assetid"
+	Api_GetBalanceByAddr   = "/api/v1/asset/balances/:addr"
+	Api_GetBalancebyAsset  = "/api/v1/asset/balance/:addr/:assetid"
+	Api_GetUTXObyAsset     = "/api/v1/asset/utxo/:addr/:assetid"
 	Api_GetUTXObyAddr      = "/api/v1/asset/utxos/:addr"
 	Api_SendRawTx          = "/api/v1/transaction"
 	Api_SendRcdTxByTrans   = "/api/v1/custom/transaction/record"
@@ -52,6 +54,7 @@ const (
 	Api_NoticeServerState  = "/api/v1/config/noticeserver/state"
 	Api_WebsocketState     = "/api/v1/config/websocket/state"
 	Api_Restart            = "/api/v1/restart"
+	Api_GetContract        = "/api/v1/contract/:hash"
 )
 
 func InitRestServer(checkAccessToken func(string, string) (string, int64, interface{})) ApiServer {
@@ -107,6 +110,9 @@ func (rt *restServer) setWebsocketState(cmd map[string]interface{}) map[string]i
 	if b, ok := cmd["PushBlock"].(bool); ok {
 		httpwebsocket.SetWsPushBlockFlag(b)
 	}
+	if b, ok := cmd["PushRawBlock"].(bool); ok {
+		httpwebsocket.SetWsPushRawBlock(b)
+	}
 	if wsPort, ok := cmd["Port"].(float64); ok && wsPort != 0 {
 		Parameters.HttpWsPort = int(wsPort)
 	}
@@ -119,6 +125,7 @@ func (rt *restServer) setWebsocketState(cmd map[string]interface{}) map[string]i
 	result["Open"] = startFlag
 	result["Port"] = Parameters.HttpWsPort
 	result["PushBlock"] = httpwebsocket.GetWsPushBlockFlag()
+	result["PushRawBlock"] = httpwebsocket.GetWsPushRawBlock()
 	resp["Result"] = result
 	return resp
 }
@@ -130,11 +137,14 @@ func (rt *restServer) registryMethod() {
 		Api_Getblockbyhash:     {name: "getblockbyhash", handler: GetBlockByHash},
 		Api_Getblockheight:     {name: "getblockheight", handler: GetBlockHeight},
 		Api_Getblockhash:       {name: "getblockhash", handler: GetBlockHash},
+		Api_GetTotalIssued:     {name: "gettotalissued", handler: GetTotalIssued},
 		Api_Gettransaction:     {name: "gettransaction", handler: GetTransactionByHash},
 		Api_Getasset:           {name: "getasset", handler: GetAssetByHash},
-		Api_GetUTXObyAddr:      {name: "getutxos", handler: GetUnspends},
-		Api_GetUTXO:            {name: "getutxo", handler: GetUnspendOutput},
-		Api_GetBalance:         {name: "getbalance", handler: GetBalance},
+		Api_GetContract:        {name: "getcontract", handler: GetContract},
+		Api_GetUTXObyAddr:      {name: "getutxobyaddr", handler: GetUnspends},
+		Api_GetUTXObyAsset:     {name: "getutxobyasset", handler: GetUnspendOutput},
+		Api_GetBalanceByAddr:   {name: "getbalancebyaddr", handler: GetBalanceByAddr},
+		Api_GetBalancebyAsset:  {name: "getbalancebyasset", handler: GetBalanceByAsset},
 		Api_OauthServerUrl:     {name: "getoauthserverurl", handler: GetOauthServerUrl},
 		Api_NoticeServerUrl:    {name: "getnoticeserverurl", handler: GetNoticeServerUrl},
 		Api_Restart:            {name: "restart", handler: rt.Restart},
@@ -170,14 +180,20 @@ func (rt *restServer) getPath(url string) string {
 		return Api_Getblockhash
 	} else if strings.Contains(url, strings.TrimRight(Api_Getblockbyhash, ":hash")) {
 		return Api_Getblockbyhash
+	} else if strings.Contains(url, strings.TrimRight(Api_GetTotalIssued, ":assetid")) {
+		return Api_GetTotalIssued
 	} else if strings.Contains(url, strings.TrimRight(Api_Gettransaction, ":hash")) {
 		return Api_Gettransaction
-	} else if strings.Contains(url, strings.TrimRight(Api_GetBalance, ":addr")) {
-		return Api_GetBalance
+	} else if strings.Contains(url, strings.TrimRight(Api_GetContract, ":hash")) {
+		return Api_GetContract
+	} else if strings.Contains(url, strings.TrimRight(Api_GetBalanceByAddr, ":addr")) {
+		return Api_GetBalanceByAddr
+	} else if strings.Contains(url, strings.TrimRight(Api_GetBalancebyAsset, ":addr/:assetid")) {
+		return Api_GetBalancebyAsset
 	} else if strings.Contains(url, strings.TrimRight(Api_GetUTXObyAddr, ":addr")) {
 		return Api_GetUTXObyAddr
-	} else if strings.Contains(url, strings.TrimRight(Api_GetUTXO, ":addr/:assetid")) {
-		return Api_GetUTXO
+	} else if strings.Contains(url, strings.TrimRight(Api_GetUTXObyAsset, ":addr/:assetid")) {
+		return Api_GetUTXObyAsset
 	} else if strings.Contains(url, strings.TrimRight(Api_Getasset, ":hash")) {
 		return Api_Getasset
 	} else if strings.Contains(url, strings.TrimRight(Api_GetStateUpdate, ":namespace/:key")) {
@@ -202,7 +218,14 @@ func (rt *restServer) getParams(r *http.Request, url string, req map[string]inte
 	case Api_Getblockhash:
 		req["Height"] = getParam(r, "height")
 		break
+	case Api_GetTotalIssued:
+		req["Assetid"] = getParam(r, "assetid")
+		break
 	case Api_Gettransaction:
+		req["Hash"] = getParam(r, "hash")
+		req["Raw"] = r.FormValue("raw")
+		break
+	case Api_GetContract:
 		req["Hash"] = getParam(r, "hash")
 		req["Raw"] = r.FormValue("raw")
 		break
@@ -210,13 +233,17 @@ func (rt *restServer) getParams(r *http.Request, url string, req map[string]inte
 		req["Hash"] = getParam(r, "hash")
 		req["Raw"] = r.FormValue("raw")
 		break
-	case Api_GetBalance:
+	case Api_GetBalancebyAsset:
+		req["Addr"] = getParam(r, "addr")
+		req["Assetid"] = getParam(r, "assetid")
+		break
+	case Api_GetBalanceByAddr:
 		req["Addr"] = getParam(r, "addr")
 		break
 	case Api_GetUTXObyAddr:
 		req["Addr"] = getParam(r, "addr")
 		break
-	case Api_GetUTXO:
+	case Api_GetUTXObyAsset:
 		req["Addr"] = getParam(r, "addr")
 		req["Assetid"] = getParam(r, "assetid")
 		break

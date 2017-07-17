@@ -9,10 +9,12 @@ import (
 	Err "DNA/net/httprestful/error"
 	"DNA/net/httpwebsocket/websocket"
 	. "DNA/net/protocol"
+	"bytes"
 )
 
 var ws *websocket.WsServer
 var pushBlockFlag bool = false
+var pushRawBlock bool = false
 
 func StartServer(n Noder) {
 	common.SetNode(n)
@@ -48,6 +50,12 @@ func GetWsPushBlockFlag() bool {
 func SetWsPushBlockFlag(b bool) {
 	pushBlockFlag = b
 }
+func GetWsPushRawBlock() bool {
+	return pushRawBlock
+}
+func SetWsPushRawBlock(b bool) {
+	pushRawBlock = b
+}
 func SetTxHashMap(txhash string, sessionid string) {
 	if ws != nil {
 		ws.SetTxHashMap(txhash, sessionid)
@@ -72,7 +80,13 @@ func PushBlock(v interface{}) {
 	if ws != nil {
 		resp := common.ResponsePack(Err.SUCCESS)
 		if block, ok := v.(*ledger.Block); ok {
-			resp["Result"] = common.GetBlockInfo(block)
+			if pushRawBlock == true {
+				w := bytes.NewBuffer(nil)
+				block.Serialize(w)
+				resp["Result"] = ToHexString(w.Bytes())
+			} else {
+				resp["Result"] = common.GetBlockInfo(block)
+			}
 			resp["Action"] = "sendrawblock"
 			ws.PushResult(resp)
 		}

@@ -9,6 +9,7 @@ import (
 	. "DNA/net/protocol"
 	"bytes"
 	"fmt"
+	"math"
 	"strconv"
 )
 
@@ -59,6 +60,34 @@ func GetBlockHash(cmd map[string]interface{}) map[string]interface{} {
 		return resp
 	}
 	resp["Result"] = ToHexString(hash.ToArrayReverse())
+	return resp
+}
+func GetTotalIssued(cmd map[string]interface{}) map[string]interface{} {
+	resp := ResponsePack(Err.SUCCESS)
+	assetid, ok := cmd["Assetid"].(string)
+	if !ok {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	var assetHash Uint256
+
+	bys, err := HexToBytesReverse(assetid)
+	if err != nil {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	if err := assetHash.Deserialize(bytes.NewReader(bys)); err != nil {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	amount, err := ledger.DefaultLedger.Store.GetQuantityIssued(assetHash)
+	if err != nil {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	val := float64(amount) / math.Pow(10, 8)
+	//valStr := strconv.FormatFloat(val, 'f', -1, 64)
+	resp["Result"] = val
 	return resp
 }
 func GetBlockInfo(block *ledger.Block) BlockInfo {
@@ -185,10 +214,13 @@ func GetAssetByHash(cmd map[string]interface{}) map[string]interface{} {
 	resp["Result"] = asset
 	return resp
 }
-func GetBalance(cmd map[string]interface{}) map[string]interface{} {
+func GetBalanceByAddr(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
-	addr := cmd["Addr"].(string)
-
+	addr, ok := cmd["Addr"].(string)
+	if !ok {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
 	var programHash Uint160
 	programHash, err := ToScriptHash(addr)
 	if err != nil {
@@ -202,13 +234,47 @@ func GetBalance(cmd map[string]interface{}) map[string]interface{} {
 			balance = balance + v.Value
 		}
 	}
-	resp["Result"] = balance
+	val := float64(balance) / math.Pow(10, 8)
+	//valStr := strconv.FormatFloat(val, 'f', -1, 64)
+	resp["Result"] = val
+	return resp
+}
+func GetBalanceByAsset(cmd map[string]interface{}) map[string]interface{} {
+	resp := ResponsePack(Err.SUCCESS)
+	addr, ok := cmd["Addr"].(string)
+	assetid, k := cmd["Assetid"].(string)
+	if !ok || !k {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	var programHash Uint160
+	programHash, err := ToScriptHash(addr)
+	if err != nil {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	unspends, err := ledger.DefaultLedger.Store.GetUnspentsFromProgramHash(programHash)
+	var balance Fixed64 = 0
+	for k, u := range unspends {
+		assid := ToHexString(k.ToArrayReverse())
+		for _, v := range u {
+			if assetid == assid {
+				balance = balance + v.Value
+			}
+		}
+	}
+	val := float64(balance) / math.Pow(10, 8)
+	//valStr := strconv.FormatFloat(val, 'f', -1, 64)
+	resp["Result"] = val
 	return resp
 }
 func GetUnspends(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
-	addr := cmd["Addr"].(string)
-
+	addr, ok := cmd["Addr"].(string)
+	if !ok {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
 	var programHash Uint160
 
 	programHash, err := ToScriptHash(addr)
@@ -219,7 +285,7 @@ func GetUnspends(cmd map[string]interface{}) map[string]interface{} {
 	type UTXOUnspentInfo struct {
 		Txid  string
 		Index uint32
-		Value Fixed64
+		Value float64
 	}
 	type Result struct {
 		AssetId   string
@@ -238,7 +304,9 @@ func GetUnspends(cmd map[string]interface{}) map[string]interface{} {
 		}
 		var unspendsInfo []UTXOUnspentInfo
 		for _, v := range u {
-			unspendsInfo = append(unspendsInfo, UTXOUnspentInfo{ToHexString(v.Txid.ToArrayReverse()), v.Index, v.Value})
+			val := float64(v.Value) / math.Pow(10, 8)
+			//valStr := strconv.FormatFloat(val, 'f', -1, 64)
+			unspendsInfo = append(unspendsInfo, UTXOUnspentInfo{ToHexString(v.Txid.ToArrayReverse()), v.Index, val})
 		}
 		results = append(results, Result{assetid, asset.Name, unspendsInfo})
 	}
@@ -247,8 +315,12 @@ func GetUnspends(cmd map[string]interface{}) map[string]interface{} {
 }
 func GetUnspendOutput(cmd map[string]interface{}) map[string]interface{} {
 	resp := ResponsePack(Err.SUCCESS)
-	addr := cmd["Addr"].(string)
-	assetid := cmd["Assetid"].(string)
+	addr, ok := cmd["Addr"].(string)
+	assetid, k := cmd["Assetid"].(string)
+	if !ok || !k {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
 
 	var programHash Uint160
 	var assetHash Uint256
@@ -269,7 +341,7 @@ func GetUnspendOutput(cmd map[string]interface{}) map[string]interface{} {
 	type UTXOUnspentInfo struct {
 		Txid  string
 		Index uint32
-		Value Fixed64
+		Value float64
 	}
 	infos, err := ledger.DefaultLedger.Store.GetUnspentFromProgramHash(programHash, assetHash)
 	if err != nil {
@@ -279,7 +351,9 @@ func GetUnspendOutput(cmd map[string]interface{}) map[string]interface{} {
 	}
 	var UTXOoutputs []UTXOUnspentInfo
 	for _, v := range infos {
-		UTXOoutputs = append(UTXOoutputs, UTXOUnspentInfo{Txid: ToHexString(v.Txid.ToArrayReverse()), Index: v.Index, Value: v.Value})
+		val := float64(v.Value) / math.Pow(10, 8)
+		//valStr := strconv.FormatFloat(val, 'f', -1, 64)
+		UTXOoutputs = append(UTXOoutputs, UTXOUnspentInfo{Txid: ToHexString(v.Txid.ToArrayReverse()), Index: v.Index, Value: val})
 	}
 	resp["Result"] = UTXOoutputs
 	return resp
@@ -363,7 +437,6 @@ func GetStateUpdate(cmd map[string]interface{}) map[string]interface{} {
 		resp["Error"] = Err.INVALID_PARAMS
 		return resp
 	}
-	fmt.Println(namespace, key)
 	val, err := ledger.DefaultLedger.Store.GetState([]byte(namespace), []byte(key))
 	if err != nil {
 		fmt.Println("getstate err:", err)
@@ -372,7 +445,6 @@ func GetStateUpdate(cmd map[string]interface{}) map[string]interface{} {
 		return resp
 	}
 	resp["Result"] = string(val)
-	fmt.Println(val)
 	return resp
 }
 
@@ -384,5 +456,28 @@ func ResponsePack(errCode int64) map[string]interface{} {
 		"Desc":    "",
 		"Version": "1.0.0",
 	}
+	return resp
+}
+func GetContract(cmd map[string]interface{}) map[string]interface{} {
+	resp := ResponsePack(Err.SUCCESS)
+	str := cmd["Hash"].(string)
+	bys, err := HexToBytesReverse(str)
+	if err != nil {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	var hash Uint160
+	err = hash.Deserialize(bytes.NewReader(bys))
+	if err != nil {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	//TODO GetContract from store
+	//contract, err := ledger.DefaultLedger.Store.GetContract(hash)
+	//if err != nil {
+	//	resp["Error"] = Err.INVALID_PARAMS
+	//	return resp
+	//}
+	//resp["Result"] = string(contract)
 	return resp
 }
