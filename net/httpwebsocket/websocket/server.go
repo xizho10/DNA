@@ -56,7 +56,7 @@ func (ws *WsServer) Start() error {
 	}
 
 	tlsFlag := false
-	if tlsFlag || Parameters.HttpWsPort%1000 == 443 {
+	if tlsFlag || Parameters.HttpWsPort%1000 == TlsPort {
 		var err error
 		ws.listener, err = ws.initTlsListen()
 		if err != nil {
@@ -91,7 +91,7 @@ func (ws *WsServer) registryMethod() {
 		resp := ResponsePack(Err.SUCCESS)
 		ws.Lock()
 		defer ws.Unlock()
-		resp["Result"] = ws.TxHashMap
+		resp["Result"] = len(ws.TxHashMap)
 		return resp
 	}
 	sendRawTransaction := func(cmd map[string]interface{}) map[string]interface{} {
@@ -100,6 +100,7 @@ func (ws *WsServer) registryMethod() {
 			if result, ok := resp["Result"].(string); ok {
 				ws.SetTxHashMap(result, userid)
 			}
+			log.Error("================UserId==============", userid)
 			delete(resp, "Userid")
 		}
 		return resp
@@ -122,7 +123,7 @@ func (ws *WsServer) registryMethod() {
 	getsessioncount := func(cmd map[string]interface{}) map[string]interface{} {
 		resp := ResponsePack(Err.SUCCESS)
 		resp["Action"] = "getsessioncount"
-		resp["Result"] = len(ws.SessionList.GetSessionList())
+		resp["Result"] = ws.SessionList.GetSessionCount()
 		return resp
 	}
 	actionMap := map[string]Handler{
@@ -132,10 +133,10 @@ func (ws *WsServer) registryMethod() {
 		"getblockheight":     {handler: GetBlockHeight},
 		"gettransaction":     {handler: GetTransactionByHash},
 		"getasset":           {handler: GetAssetByHash},
-		"getunspendoutput":   {handler: GetUnspendOutput},
+		"getcontract":        {handler: GetContract},
 
 		"sendrawtransaction": {handler: sendRawTransaction},
-		"sendrecord":         {handler: SendRecorByTransferTransaction},
+		"sendrecord":         {handler: SendRecord},
 		"heartbeat":          {handler: heartbeat},
 
 		"sendtest": {handler: sendtest, pushFlag: true},
@@ -160,23 +161,30 @@ func (ws *WsServer) Restart() {
 		go ws.Start()
 	}()
 }
+
 func (ws *WsServer) checkSessionsTimeout(done chan bool) {
 	ticker := time.NewTicker(time.Second * 10)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			for _, v := range ws.SessionList.GetSessionList() {
+			var closeList []*Session
+			ws.SessionList.ForEachSession(func(v *Session) {
 				if v.SessionTimeoverCheck() {
 					resp := ResponsePack(Err.SESSION_EXPIRED)
 					ws.response(v.GetSessionId(), resp)
-					ws.SessionList.CloseSession(v)
+					closeList = append(closeList, v)
 				}
+			})
+			for _, s := range closeList {
+				ws.SessionList.CloseSession(s)
 			}
+
 		case <-done:
 			return
 		}
 	}
+
 }
 
 //webSocketHandler
@@ -314,7 +322,6 @@ func (ws *WsServer) response(sSessionId string, resp map[string]interface{}) {
 		return
 	}
 	ws.send(sSessionId, data)
-	ws.broadcast(data)
 }
 func (ws *WsServer) PushTxResult(txHashStr string, resp map[string]interface{}) {
 	ws.Lock()
@@ -324,7 +331,6 @@ func (ws *WsServer) PushTxResult(txHashStr string, resp map[string]interface{}) 
 	if len(sSessionId) > 0 {
 		ws.response(sSessionId, resp)
 	}
-	ws.response(sSessionId, resp)
 }
 func (ws *WsServer) PushResult(resp map[string]interface{}) {
 	resp["Desc"] = Err.ErrMap[resp["Error"].(int64)]
@@ -343,9 +349,9 @@ func (ws *WsServer) send(sSessionId string, data []byte) error {
 	return session.Send(data)
 }
 func (ws *WsServer) broadcast(data []byte) error {
-	for _, v := range ws.SessionList.GetSessionList() {
+	ws.SessionList.ForEachSession(func(v *Session) {
 		v.Send(data)
-	}
+	})
 	return nil
 }
 

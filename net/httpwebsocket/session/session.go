@@ -10,11 +10,12 @@ import (
 
 type Session struct {
 	sync.Mutex
-	mSessionList *SessionList
-	mConnection  *websocket.Conn
-	nLastActive  int64
-	sSessionId   string
+	mConnection *websocket.Conn
+	nLastActive int64
+	sSessionId  string
 }
+
+const sessionTimeOut int64 = 120
 
 func (s *Session) GetSessionId() string {
 	return s.sSessionId
@@ -39,6 +40,8 @@ func (s *Session) close() {
 }
 
 func (s *Session) UpdateActiveTime() {
+	s.Lock()
+	defer s.Unlock()
 	s.nLastActive = time.Now().Unix()
 }
 
@@ -55,7 +58,7 @@ func (s *Session) Send(data []byte) error {
 func (s *Session) SessionTimeoverCheck() bool {
 
 	nCurTime := time.Now().Unix()
-	if nCurTime-s.nLastActive > 120 { //sec
+	if nCurTime-s.nLastActive > sessionTimeOut { //sec
 		return true
 	}
 	return false

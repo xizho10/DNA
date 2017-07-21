@@ -41,10 +41,11 @@ func (ic *InvokeCode) Deserialize(r io.Reader) error {
 	}
 	ic.Code = code
 
+	p := new(common.Uint160)
 	err = u.Deserialize(r)
 	if err != nil {
 		return err
 	}
-	ic.ProgramHash = *u
+	ic.ProgramHash = *p
 	return nil
 }

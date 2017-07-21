@@ -30,6 +30,8 @@ import (
 
 const (
 	HeaderHashListCount = 2000
+	DEPLOY_TRANSACTION = "DeployTransaction"
+	INVOKE_TRANSACTION = "InvokeTransaction"
 )
 
 var (
@@ -724,7 +726,7 @@ func (bd *ChainStore) persist(b *Block) error {
 	//////////////////////////////////////////////////////////////
 	// save transactions to leveldb
 	nLen := len(b.Transactions)
-
+	fmt.Println("==========len(b.Transactions)===============",  len(b.Transactions))
 	for i := 0; i < nLen; i++ {
 
 		// now support RegisterAsset / IssueAsset / TransferAsset and Miner TX ONLY.
@@ -743,6 +745,7 @@ func (bd *ChainStore) persist(b *Block) error {
 				return err
 			}
 		}
+		txHash := b.Transactions[i].Hash()
 		switch b.Transactions[i].TxType {
 		case tx.RegisterAsset:
 			ar := b.Transactions[i].Payload.(*payload.RegisterAsset)
@@ -784,31 +787,36 @@ func (bd *ChainStore) persist(b *Block) error {
 				Gas: Fixed64(0),
 			})
 			if err != nil {
-				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), SMARTCODE_ERROR, fmt.Sprintf("[ERROR] Create SmartContract Error: %v", err))
-				continue
+				httpwebsocket.PushResult(txHash, SMARTCODE_ERROR, DEPLOY_TRANSACTION, err)
+				return err
 			}
 			ret, err := smartContract.DeployContract()
 			if err != nil {
-				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), SMARTCODE_ERROR, fmt.Sprintf("[ERROR] Deploy SmartContract Error: %v", err))
+				httpwebsocket.PushResult(txHash, SMARTCODE_ERROR, DEPLOY_TRANSACTION, err)
 				continue
-			} else {
-				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), 0, ret)
 			}
+			hash, err := ToCodeHash(ret)
+			if err != nil {
+				httpwebsocket.PushResult(txHash, SMARTCODE_ERROR, DEPLOY_TRANSACTION, err)
+				return err
+			}
+			httpwebsocket.PushResult(txHash, 0, DEPLOY_TRANSACTION, ToHexString(hash.ToArrayReverse()))
 			err = dbCache.Commit()
 			if err != nil {
 				return err
 			}
 		case tx.InvokeCode:
+			fmt.Println("======================InvokeCode  leveldb===========================")
 			invokeCode := b.Transactions[i].Payload.(*payload.InvokeCode)
 			contract, err := bd.GetContract(invokeCode.CodeHash)
 			if err != nil {
-				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), SMARTCODE_ERROR, fmt.Sprintf("[ERROE] contract code not exist:%v", err))
+				httpwebsocket.PushResult(txHash, SMARTCODE_ERROR, INVOKE_TRANSACTION, err)
 				continue
 			}
 			state, err := states.GetStateValue(ST_Contract, contract)
 			if err != nil {
-				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), SMARTCODE_ERROR, err)
-				continue
+				httpwebsocket.PushResult(txHash, SMARTCODE_ERROR, INVOKE_TRANSACTION, err)
+				return err
 			}
 			contractState := state.(*states.ContractState)
 			smartContract, _ := smartcontract.NewSmartContract(&smartcontract.Context{
@@ -824,15 +832,14 @@ func (bd *ChainStore) persist(b *Block) error {
 				BlockNumber: big.NewInt(int64(b.Blockdata.Height)),
 				Gas: Fixed64(0),
 				ReturnType: contractState.Code.ReturnType,
+				ParameterTypes: contractState.Code.ParameterTypes,
 			})
 			ret, err := smartContract.InvokeContract()
-			fmt.Println("=====avm.PopInt(engine)", ret)
 			if err != nil {
-				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), SMARTCODE_ERROR, fmt.Sprintf("[Error] Invoke Contract error:%v", err))
+				httpwebsocket.PushResult(txHash, SMARTCODE_ERROR, INVOKE_TRANSACTION, err)
 				continue
-			} else {
-				httpwebsocket.PushSmartCodeInvokeResult(b.Transactions[i].Hash(), 0, ret)
 			}
+			httpwebsocket.PushResult(txHash, 0, INVOKE_TRANSACTION, ret)
 			err = dbCache.Commit()
 			if err != nil {
 				return err

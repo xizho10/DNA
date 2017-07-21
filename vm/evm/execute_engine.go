@@ -32,12 +32,13 @@ func NewExecutionEngine(dbCache storage.DBCache, time *big.Int, blockNumber *big
 
 func (e *ExecutionEngine) Create(caller common.Uint160, code []byte) (ret []byte, err error) {
 	e.contract = NewContract(caller)
-	codeHash, _ := common.ToCodeHash(code)
+	codeHash, err := common.ToCodeHash(code)
+	if err != nil { return nil, err }
 	e.contract.SetCode(code, codeHash)
 	ret, err = e.run()
 	if err != nil { return nil, err }
 	e.DBCache.SetCode(codeHash, ret)
-	return nil, nil
+	return ret, nil
 }
 
 func (e *ExecutionEngine) Call(caller common.Uint160, codeHash common.Uint160, input []byte) (ret []byte, err error) {

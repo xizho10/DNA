@@ -3,9 +3,7 @@ package avm
 func opCat(e *ExecutionEngine) (VMState, error) {
 	b2 :=PopByteArray(e)
 	b1 :=PopByteArray(e)
-	if len(b1) != len(b2) {
-		return FAULT, nil
-	}
+
 	r := ByteArrZip(b1, b2, CAT)
 	PushData(e, r)
 	return NONE, nil

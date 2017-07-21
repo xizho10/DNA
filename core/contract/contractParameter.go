@@ -10,4 +10,6 @@ const (
 	Hash160
 	Hash256
 	ByteArray
+	PublicKey
+	Void = 0xff
 )

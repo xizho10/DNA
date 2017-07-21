@@ -11,10 +11,12 @@ import (
 
 type DeployCode struct {
 	Code        *FunctionCode
+	Params      []byte
 	Name        string
 	CodeVersion string
 	Author      string
 	Email       string
+	Contract    string
 	Description string
 	Language    types.LangType
 	ProgramHash common.Uint160
@@ -29,6 +31,12 @@ func (dc *DeployCode) Data() []byte {
 func (dc *DeployCode) Serialize(w io.Writer) error {
 
 	err := dc.Code.Serialize(w)
+	if err != nil {
+		return err
+	}
+
+	err = serialization.WriteVarBytes(w, dc.Params)
+
 	if err != nil {
 		return err
 	}
@@ -49,6 +57,11 @@ func (dc *DeployCode) Serialize(w io.Writer) error {
 	}
 
 	err = serialization.WriteVarString(w, dc.Email)
+	if err != nil {
+		return err
+	}
+
+	err = serialization.WriteVarString(w, dc.Contract)
 	if err != nil {
 		return err
 	}
@@ -77,6 +90,11 @@ func (dc *DeployCode) Deserialize(r io.Reader) error {
 		return err
 	}
 
+	dc.Params, err = serialization.ReadVarBytes(r)
+	if err != nil {
+		return err
+	}
+
 	dc.Name, err = serialization.ReadVarString(r)
 	if err != nil {
 		return err
@@ -93,6 +111,11 @@ func (dc *DeployCode) Deserialize(r io.Reader) error {
 	}
 
 	dc.Email, err = serialization.ReadVarString(r)
+	if err != nil {
+		return err
+	}
+
+	dc.Contract, err = serialization.ReadVarString(r)
 	if err != nil {
 		return err
 	}

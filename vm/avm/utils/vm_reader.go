@@ -27,12 +27,9 @@ func (r *VmReader) ReadByte() (byte,error) {
 }
 
 func (r *VmReader) ReadBytes(count int) []byte {
-	var bytes []byte
-	for i := 0; i < count; i++ {
-		d,_ := r.ReadByte()
-		bytes = append(bytes, d)
-	}
-	return bytes
+	b := make([]byte, count)
+	r.reader.Read(b)
+	return b
 }
 
 func (r *VmReader) ReadUint16() uint16 {

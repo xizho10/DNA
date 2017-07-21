@@ -37,6 +37,7 @@ func (ba *ByteArray) Equals(other StackItemInterface) bool {
 func (ba *ByteArray) GetBigInteger() *big.Int {
 	bi := new(big.Int)
 	return bi.SetBytes(ba.value)
+	//return big.NewInt(int64(binary.LittleEndian.Uint64(ba.value)))
 }
 
 func (ba *ByteArray) GetBoolean() bool{

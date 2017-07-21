@@ -62,9 +62,15 @@ func (sl *SessionList) GetSessionById(sSessionId string) *Session {
 	return nil
 
 }
-func (sl *SessionList) GetSessionList() map[string]*Session {
-	sl.Lock()
-	defer sl.Unlock()
-	list := sl.mapOnlineList
-	return list
+func (sl *SessionList) GetSessionCount() int {
+	sl.RLock()
+	defer sl.RUnlock()
+	return len(sl.mapOnlineList)
+}
+func (sl *SessionList) ForEachSession(visit func(*Session)) {
+	sl.RLock()
+	defer sl.RUnlock()
+	for _, v := range sl.mapOnlineList {
+		visit(v)
+	}
 }

@@ -12,16 +12,23 @@ import (
 	"DNA/vm/evm"
 	"DNA/errors"
 	"DNA/core/contract"
+	"DNA/vm/evm/abi"
+	"bytes"
+	"DNA/common/serialization"
+	"fmt"
+	"DNA/common/log"
 )
 
 type SmartContract struct {
-	Engine     Engine
-	Code       []byte
-	Input      []byte
-	Caller     common.Uint160
-	CodeHash   common.Uint160
-	VMType     types.VmType
-	ReturnType contract.ContractParameterType
+	Engine         Engine
+	Code           []byte
+	Input          []byte
+	ParameterTypes []contract.ContractParameterType
+	ABI            abi.ABI
+	Caller         common.Uint160
+	CodeHash       common.Uint160
+	VMType         types.VmType
+	ReturnType     contract.ContractParameterType
 }
 
 type Context struct {
@@ -38,6 +45,7 @@ type Context struct {
 	SignableData   sig.SignableData
 	Gas            common.Fixed64
 	ReturnType     contract.ContractParameterType
+	ParameterTypes []contract.ContractParameterType
 }
 
 type Engine interface {
@@ -69,6 +77,7 @@ func NewSmartContract(context *Context) (*SmartContract, error) {
 			Caller: context.Caller,
 			VMType: vmType,
 			ReturnType: context.ReturnType,
+			ParameterTypes: context.ParameterTypes,
 		}, nil
 	} else {
 		return nil, errors.NewDetailErr(errors.NewErr("Not Support Language Type!"), errors.ErrNoCode, "")
@@ -81,7 +90,12 @@ func (sc *SmartContract) DeployContract() ([]byte, error) {
 }
 
 func (sc *SmartContract) InvokeContract() (interface{}, error) {
-	sc.Engine.Call(sc.Caller, sc.CodeHash, sc.Input)
+	input, err := sc.InvokeParamsTransform()
+	if err != nil {
+		return nil, err
+	}
+	log.Error("==========input=========", input)
+	sc.Engine.Call(sc.Caller, sc.CodeHash, input)
 	return sc.InvokeResult()
 }
 
@@ -89,16 +103,57 @@ func (sc *SmartContract) InvokeResult() (interface{}, error) {
 	switch sc.VMType {
 	case types.AVM:
 		engine := sc.Engine.(*avm.ExecutionEngine)
-		if engine.GetEvaluationStack().Count() > 0 {
+		log.Error("==========type========", sc.ReturnType)
+		log.Error("==========type========", engine.GetEvaluationStackCount())
+		if engine.GetEvaluationStackCount() > 0 {
 			switch sc.ReturnType {
 			case contract.Boolean:
+				log.Error("=========Result==========", avm.Peek(engine))
 				return avm.PopBoolean(engine), nil
 			case contract.Integer:
 				return avm.PopInt(engine), nil
 			case contract.ByteArray:
-				return avm.PopByteArray(engine), nil
+				log.Error("=========Result ByteArray==========", avm.Peek(engine).GetStackItem().GetByteArray())
+				return string(avm.PopByteArray(engine)), nil
 			}
 		}
+	case types.EVM:
+	}
+	return nil, nil
+}
+
+func (sc *SmartContract) InvokeParamsTransform() ([]byte, error) {
+	fmt.Println("===========InvokeParamsTransform=============")
+	switch sc.VMType {
+	case types.AVM:
+		builder := avm.NewParamsBuilder(new(bytes.Buffer))
+		fmt.Println("==========sc.Input=============", sc.Input)
+		b := bytes.NewBuffer(sc.Input)
+		for _, k := range sc.ParameterTypes {
+			switch k {
+			case contract.Boolean:
+				p, err := serialization.ReadBool(b)
+				if err != nil {
+					return nil, err
+				}
+				builder.EmitPushBool(p)
+			case contract.Integer:
+				p, err := serialization.ReadVarUint(b, 0)
+				if err != nil {
+					return nil, err
+				}
+				fmt.Println("===========p=============", int64(p))
+				builder.EmitPushInteger(int64(p))
+			case contract.ByteArray:
+				p, err := serialization.ReadVarBytes(b)
+				if err != nil {
+					return nil, err
+				}
+				builder.EmitPushByteArray(p)
+			}
+		}
+		builder.EmitPushCall(sc.CodeHash.ToArray())
+		return builder.ToArray(), nil
 	case types.EVM:
 	}
 	return nil, nil

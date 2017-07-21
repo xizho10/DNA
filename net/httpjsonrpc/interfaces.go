@@ -622,3 +622,4 @@ func getDataFile(params []interface{}) map[string]interface{} {
 		return DnaRpcInvalidParameter
 	}
 }
+

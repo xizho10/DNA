@@ -10,6 +10,8 @@ import (
 	"DNA/vm/avm/types"
 	"encoding/binary"
 	"bytes"
+	"DNA/common/log"
+	"fmt"
 )
 
 const (
@@ -64,10 +66,11 @@ type ExecutionEngine struct {
 }
 
 func (e *ExecutionEngine) Create(caller common.Uint160, code []byte) ([]byte, error) {
-	return nil, nil
+	return code, nil
 }
 
 func (e *ExecutionEngine) Call(caller common.Uint160, codeHash common.Uint160, input []byte) ([]byte, error) {
+	log.Error("input:", input)
 	e.LoadCode(input, false)
 	err := e.Execute()
 	if err != nil {
@@ -86,6 +89,10 @@ func (e *ExecutionEngine) GetState() VMState {
 
 func (e *ExecutionEngine) GetEvaluationStack() *RandomAccessStack {
 	return e.evaluationStack
+}
+
+func (e *ExecutionEngine) GetEvaluationStackCount() int {
+	return e.evaluationStack.Count()
 }
 
 func (e *ExecutionEngine) GetExecuteResult() bool {
@@ -173,7 +180,13 @@ func (e *ExecutionEngine) StepInto() error {
 	//if e.gas < 0 {
 	//	return ErrOutOfGas
 	//}
+	fmt.Println("op", OpExecList[e.opCode].Name)
 	state, err := e.ExecuteOp()
+	s := e.evaluationStack.Count()
+	for i:=0; i<s;i++ {
+		fmt.Print(" ", e.evaluationStack.Peek(i).GetStackItem())
+	}
+	fmt.Println()
 	if state == HALT || state == FAULT {
 		e.state = state
 		return err

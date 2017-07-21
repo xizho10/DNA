@@ -1,7 +1,6 @@
 package httpwebsocket
 
 import (
-	. "DNA/common"
 	. "DNA/common/config"
 	"DNA/core/ledger"
 	"DNA/events"
@@ -9,6 +8,7 @@ import (
 	Err "DNA/net/httprestful/error"
 	"DNA/net/httpwebsocket/websocket"
 	. "DNA/net/protocol"
+	. "DNA/common"
 )
 
 var ws *websocket.WsServer
@@ -53,19 +53,14 @@ func SetTxHashMap(txhash string, sessionid string) {
 		ws.SetTxHashMap(txhash, sessionid)
 	}
 }
-func PushSmartCodeInvokeResult(txHash Uint256, errcode int64, result interface{}) {
+func PushResult(txHash Uint256, errcode int64, action string, result interface{}) {
 	if ws != nil {
 		resp := common.ResponsePack(Err.SUCCESS)
-		var Result = make(map[string]interface{})
-		txHashStr := ToHexString(txHash.ToArray())
-		Result["TxHash"] = txHashStr
-		Result["ExecResult"] = result
-
-		resp["Result"] = Result
-		resp["Action"] = "sendsmartcodeinvoke"
+		resp["Result"] = result
 		resp["Error"] = errcode
+		resp["Action"] = action
 		resp["Desc"] = Err.ErrMap[resp["Error"].(int64)]
-		ws.PushTxResult(txHashStr, resp)
+		ws.PushTxResult(ToHexString(txHash.ToArrayReverse()), resp)
 	}
 }
 func PushBlock(v interface{}) {

@@ -13,7 +13,6 @@ var ErrEof = errors.New("got EOF, can not get the next byte")
 
 //SerializableData describe the data need be serialized.
 type SerializableData interface {
-
 	//Write data to writer
 	Serialize(w io.Writer) error
 
@@ -221,6 +220,19 @@ func ReadBytes(reader io.Reader, length uint64) ([]byte, error) {
 	return str, nil
 }
 
+func ReadInt8(reader io.Reader) (int8, error) {
+	p := make([]byte, 1)
+	n, err := reader.Read(p)
+	if n <= 0 || err != nil {
+		return 0, ErrEof
+	}
+	b_buf := bytes.NewBuffer(p)
+	var x int8
+	binary.Read(b_buf, binary.LittleEndian, &x)
+	return x, nil
+}
+
+
 func ReadUint8(reader io.Reader) (uint8, error) {
 	p := make([]byte, 1)
 	n, err := reader.Read(p)
@@ -350,6 +362,16 @@ func byteXReader(reader io.Reader, x uint64) ([]byte, error) {
 func byteToUint8(bytex []byte) (uint8, error) {
 	b_buf := bytes.NewBuffer(bytex)
 	var x uint8
+	err := binary.Read(b_buf, binary.LittleEndian, &x)
+	if err != nil {
+		return 0, err
+	}
+	return x, nil
+}
+
+func byteToInt8(bytex []byte) (int8, error) {
+	b_buf := bytes.NewBuffer(bytex)
+	var x int8
 	err := binary.Read(b_buf, binary.LittleEndian, &x)
 	if err != nil {
 		return 0, err

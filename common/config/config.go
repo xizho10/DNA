@@ -24,9 +24,9 @@ type Configuration struct {
 	RestKeyPath      string   `json:"RestKeyPath"`
 	HttpWsPort       int      `json:"HttpWsPort"`
 	HttpJsonPort     int      `json:"HttpJsonPort"`
-	HttpLocalPort    int      `json:"HttpLocalPort"`
-	OauthServerAddr  string   `json:"OauthServerAddr"`
-	NoticeServerAddr string   `json:"NoticeServerAddr"`
+	HttpLocalPort    int      `jsrlon:"HttpLocalPort"`
+	OauthServerUrl   string   `json:"OauthServerUrl"`
+	NoticeServerUrl  string   `json:"NoticeServerUrl"`
 	NodePort         int      `json:"NodePort"`
 	NodeType         string   `json:"NodeType"`
 	WebSocketPort    int      `json:"WebSocketPort"`

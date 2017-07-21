@@ -8,7 +8,6 @@ import (
 	. "DNA/net/protocol"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -21,15 +20,15 @@ import (
 )
 
 type link struct {
-	//Todo Add lock here
+			//Todo Add lock here
 	addr  string    // The address of the node
 	conn  net.Conn  // Connect socket with the peer node
 	port  uint16    // The server port of the node
 	time  time.Time // The latest time the node activity
 	rxBuf struct {  // The RX buffer of this node to solve mutliple packets problem
-		p   []byte
-		len int
-	}
+		      p   []byte
+		      len int
+	      }
 	connCnt uint64 // The connection count
 }
 
@@ -44,8 +43,15 @@ func unpackNodeBuf(node *node, buf []byte) {
 			errors.New("Unexpected size of received message")
 			return
 		}
-		// FIXME Check the payload < 0 error case
-		msgLen = PayloadLen(buf) + MSGHDRLEN
+
+		length := 0
+		length, buf = PayloadLen(buf)
+
+		if length == 0 && buf == nil {
+			return
+		}
+
+		msgLen = length + MSGHDRLEN
 	} else {
 		msgLen = node.rxBuf.len
 	}
@@ -89,7 +95,7 @@ func (node *node) rx() {
 		}
 	}
 
-DISCONNECT:
+	DISCONNECT:
 	node.local.eventQueue.GetEvent("disconnect").Notify(events.EventNodeDisconnect, node)
 }
 
@@ -108,6 +114,7 @@ func (link *link) CloseConn() {
 }
 
 func (n *node) initConnection() {
+	log.Error("=============initConnection==================")
 	isTls := Parameters.IsTLS
 	var listener net.Listener
 	var err error
@@ -203,24 +210,34 @@ func parseIPaddr(s string) (string, error) {
 
 func (node *node) Connect(nodeAddr string) error {
 	log.Debug()
+
+	if node.IsAddrInNbrList(nodeAddr) == true {
+		return nil
+	}
+	if added := node.SetAddrInConnectingList(nodeAddr); added == false {
+		return errors.New("node exist in connecting list, cancel")
+	}
+
 	isTls := Parameters.IsTLS
 	var conn net.Conn
 	var err error
+
 	if isTls {
 		conn, err = TLSDial(nodeAddr)
 		if err != nil {
+			node.RemoveAddrInConnectingList(nodeAddr)
 			log.Error("TLS connect failed: ", err)
-			return nil
+			return err
 		}
 	} else {
 		conn, err = NonTLSDial(nodeAddr)
 		if err != nil {
+			node.RemoveAddrInConnectingList(nodeAddr)
 			log.Error("non TLS connect failed: ", err)
-			return nil
+			return err
 		}
 	}
 	node.link.connCnt++
-
 	n := NewNode()
 	n.conn = conn
 	n.addr, err = parseIPaddr(conn.RemoteAddr().String())
@@ -240,7 +257,7 @@ func (node *node) Connect(nodeAddr string) error {
 
 func NonTLSDial(nodeAddr string) (net.Conn, error) {
 	log.Debug()
-	conn, err := net.Dial("tcp", nodeAddr)
+	conn, err := net.DialTimeout("tcp", nodeAddr, time.Second*DIALTIMEOUT)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +287,9 @@ func TLSDial(nodeAddr string) (net.Conn, error) {
 		Certificates: []tls.Certificate{cert},
 	}
 
-	conn, err := tls.Dial("tcp", nodeAddr, conf)
+	var dialer net.Dialer
+	dialer.Timeout = time.Second * DIALTIMEOUT
+	conn, err := tls.DialWithDialer(&dialer, "tcp", nodeAddr, conf)
 	if err != nil {
 		return nil, err
 	}
@@ -278,9 +297,7 @@ func TLSDial(nodeAddr string) (net.Conn, error) {
 }
 
 func (node *node) Tx(buf []byte) {
-	log.Debug()
-	str := hex.EncodeToString(buf)
-	log.Debug(fmt.Sprintf("TX buf length: %d\n%s", len(buf), str))
+	log.Debugf("TX buf length: %d\n%x", len(buf), buf)
 
 	_, err := node.conn.Write(buf)
 	if err != nil {

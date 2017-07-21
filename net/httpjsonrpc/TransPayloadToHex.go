@@ -102,7 +102,7 @@ func TransPayloadToHex(p Payload) PayloadInfo {
 		obj.Code.ParameterTypes = ToHexString(ContractParameterTypeToByte(object.Code.ParameterTypes))
 		obj.Code.ReturnType = string(byte(object.Code.ReturnType))
 		codeHash := object.Code.CodeHash()
-		obj.Code.CodeHash = ToHexString(codeHash.ToArray())
+		obj.Code.CodeHash = ToHexString(codeHash.ToArrayReverse())
 		obj.Name = object.Name
 		obj.CodeVersion = object.CodeVersion
 		obj.Author = object.Author

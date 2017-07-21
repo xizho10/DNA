@@ -4,7 +4,7 @@ import (
 	"DNA/vm/evm/crypto/sha3"
 	"math/big"
 	"DNA/vm/evm/common"
-	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+	"DNA/vm/evm/crypto/secp256k1"
 )
 
 var (
