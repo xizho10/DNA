@@ -17,6 +17,7 @@ import (
 	"DNA/common/serialization"
 	"fmt"
 	"DNA/common/log"
+	"strconv"
 )
 
 type SmartContract struct {
@@ -138,12 +139,16 @@ func (sc *SmartContract) InvokeParamsTransform() ([]byte, error) {
 				}
 				builder.EmitPushBool(p)
 			case contract.Integer:
-				p, err := serialization.ReadVarUint(b, 0)
+				p, err := serialization.ReadVarBytes(b)
 				if err != nil {
 					return nil, err
 				}
-				fmt.Println("===========p=============", int64(p))
-				builder.EmitPushInteger(int64(p))
+				i, err := strconv.ParseInt(string(p), 10, 64)
+				if err != nil {
+					return nil, err
+				}
+				fmt.Println("===========p=============", int64(i))
+				builder.EmitPushInteger(int64(i))
 			case contract.ByteArray:
 				p, err := serialization.ReadVarBytes(b)
 				if err != nil {
@@ -153,6 +158,7 @@ func (sc *SmartContract) InvokeParamsTransform() ([]byte, error) {
 			}
 		}
 		builder.EmitPushCall(sc.CodeHash.ToArray())
+		fmt.Println("=================builder======================", builder.ToArray())
 		return builder.ToArray(), nil
 	case types.EVM:
 	}

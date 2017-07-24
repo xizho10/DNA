@@ -35,11 +35,12 @@ func (p *ParamsBuilder) EmitPushInteger(data int64) {
 		return
 	}
 	if data > 0 && data < 16 {
-		p.Emit(OpCode(byte(int(PUSH1) - 1 + int(data))))
+		p.Emit(OpCode((int(PUSH1) - 1 + int(data))))
 		return
 	}
-	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, uint64(data))
+	buf := bytes.NewBuffer([]byte{})
+	binary.Write(buf, binary.BigEndian, data)
+	p.EmitPushByteArray(buf.Bytes())
 }
 
 func (p *ParamsBuilder) EmitPushByteArray(data []byte) {
