@@ -133,8 +133,9 @@ func (sc *SmartContract) InvokeResult() (interface{}, error) {
 					return service.GetAccountInfo(data.(*states.AccountState)), nil
 				case *asset.Asset:
 					return service.GetAssetInfo(data.(*asset.Asset)), nil
+				default:
+					return data, nil
 				}
-
 			}
 		}
 	case types.EVM:

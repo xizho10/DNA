@@ -14,10 +14,10 @@ import (
 	"DNA/core/ledger"
 	"DNA/core/code"
 	"DNA/core/signature"
-	"DNA/errors"
 	"bytes"
 	"DNA/core/store"
 	"DNA/common/log"
+	"DNA/errors"
 )
 
 type StateMachine struct {
@@ -233,11 +233,16 @@ func (s *StateMachine) StorageGet(engine *avm.ExecutionEngine) (bool, error) {
 	log.Error("[StorageGet] key:", key)
 	storageKey := states.NewStorageKey(context.codeHash, key)
 	item, err := s.DBCache.TryGet(store.ST_Storage, storage.KeyToStr(storageKey))
-	if err != nil {
+	if err != nil && err.Error() != errors.NewErr("leveldb: not found").Error(){
 		log.Error("[StorageGet] Get Storage By Key Error:", err)
 		return false, err
 	}
-	avm.PushData(engine, item.(*states.StorageItem).Value)
+	if item == nil {
+		avm.PushData(engine, []byte{0})
+	}else {
+		log.Error("[StorageGet] value:", item.(*states.StorageItem).Value)
+		avm.PushData(engine, item.(*states.StorageItem).Value)
+	}
 	return true, nil
 }
 
