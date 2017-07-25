@@ -565,8 +565,8 @@ func (s *StateReader) ContractGetCode(e *avm.ExecutionEngine) (bool, error) {
 }
 
 func (s *StateReader) StorageGetContext(e *avm.ExecutionEngine) (bool, error) {
-	codeHash, err := common.Uint160ParseFromBytes(e.CurrentContext().CodeHash)
+	codeHash, err := common.Uint160ParseFromBytes(e.CurrentContext().GetCodeHash())
 	if err != nil {return false, err}
-	avm.PushData(e, types.NewInteropInterface(NewStorageContext(&codeHash)))
+	avm.PushData(e, NewStorageContext(&codeHash))
 	return true, nil
 }

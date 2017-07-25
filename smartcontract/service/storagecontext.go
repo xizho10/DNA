@@ -2,7 +2,6 @@ package service
 
 import (
 	"DNA/common"
-	"bytes"
 )
 
 type StorageContext struct {
@@ -16,7 +15,5 @@ func NewStorageContext(codeHash *common.Uint160) *StorageContext {
 }
 
 func (sc *StorageContext) ToArray() ([]byte) {
-	b := new(bytes.Buffer)
-	sc.codeHash.Serialize(b)
-	return b.Bytes()
+	return sc.codeHash.ToArray()
 }

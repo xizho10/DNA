@@ -55,7 +55,7 @@ func (cache *DBCache) GetOrAdd(prefix store.DataEntryPrefix, key string, value s
 		}
 	} else {
 		item, err := cache.TryGetInternal(prefix, key)
-		if err != nil {
+		if err != nil && err.Error() != ErrDBNotFound.Error() {
 			return nil, err
 		}
 		write := &storage.Write{
