@@ -11,5 +11,6 @@ const (
 	Hash256
 	ByteArray
 	PublicKey
+	Object
 	Void = 0xff
 )

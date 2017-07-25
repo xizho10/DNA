@@ -18,6 +18,10 @@ import (
 	"fmt"
 	"DNA/common/log"
 	"strconv"
+	"DNA/core/ledger"
+	"DNA/core/transaction"
+	"DNA/smartcontract/states"
+	"DNA/core/asset"
 )
 
 type SmartContract struct {
@@ -114,8 +118,23 @@ func (sc *SmartContract) InvokeResult() (interface{}, error) {
 			case contract.Integer:
 				return avm.PopInt(engine), nil
 			case contract.ByteArray:
-				log.Error("=========Result ByteArray==========", avm.Peek(engine).GetStackItem().GetByteArray())
+				log.Error("=========Result ByteArray==========", string(avm.Peek(engine).GetStackItem().GetByteArray()))
 				return string(avm.PopByteArray(engine)), nil
+			case contract.Object:
+				data := avm.PopInteropInterface(engine)
+				switch data.(type) {
+				case *ledger.Header:
+					return service.GetHeaderInfo(data.(*ledger.Header)), nil
+				case *ledger.Block:
+					return service.GetBlockInfo(data.(*ledger.Block)), nil
+				case *transaction.Transaction:
+					return service.GetTransactionInfo(data.(*transaction.Transaction)), nil
+				case *states.AccountState:
+					return service.GetAccountInfo(data.(*states.AccountState)), nil
+				case *asset.Asset:
+					return service.GetAssetInfo(data.(*asset.Asset)), nil
+				}
+
 			}
 		}
 	case types.EVM:
