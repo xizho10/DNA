@@ -210,7 +210,7 @@ func (s *StateMachine) ContractDestory(engine *avm.ExecutionEngine) (bool, error
 }
 
 func (s *StateMachine) CheckStorageContext(context *StorageContext) (bool, error) {
-	item, err := s.DBCache.TryGet(store.ST_Contract, storage.KeyToStr(context.codeHash))
+	item, err := s.DBCache.TryGet(store.ST_Contract, string(context.codeHash.ToArray()))
 	if err != nil {
 		return false, err
 	}
