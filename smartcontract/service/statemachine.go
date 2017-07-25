@@ -17,6 +17,7 @@ import (
 	"DNA/errors"
 	"bytes"
 	"DNA/core/store"
+	"backup/GoOnchainx/common/log"
 )
 
 type StateMachine struct {
@@ -212,9 +213,11 @@ func (s *StateMachine) ContractDestory(engine *avm.ExecutionEngine) (bool, error
 func (s *StateMachine) CheckStorageContext(context *StorageContext) (bool, error) {
 	item, err := s.DBCache.TryGet(store.ST_Contract, string(context.codeHash.ToArray()))
 	if err != nil {
+		log.Error("[CheckStorageContext] Error:", err)
 		return false, err
 	}
 	if item == nil {
+		log.Error("[CheckStorageContext] Get Storage Context Fail")
 		return false, fmt.Errorf("check storage context fail, codehash=%v", context.codeHash)
 	}
 	return true, nil
@@ -230,6 +233,7 @@ func (s *StateMachine) StorageGet(engine *avm.ExecutionEngine) (bool, error) {
 	storageKey := states.NewStorageKey(context.codeHash, key)
 	item, err := s.DBCache.TryGet(store.ST_Storage, storage.KeyToStr(storageKey))
 	if err != nil {
+		log.Error("[StorageGet] Get Storage By Key Error:", err)
 		return false, err
 	}
 	avm.PushData(engine, item.(*states.StorageItem).Value)
