@@ -10,6 +10,7 @@ import (
 	"DNA/core/transaction"
 	"DNA/smartcontract/states"
 	"DNA/vm/avm"
+	"DNA/common/log"
 )
 
 type StateReader struct {
@@ -93,8 +94,10 @@ func (s *StateReader) BlockChainGetHeight(e *avm.ExecutionEngine) (bool, error) 
 	if ledger.DefaultLedger == nil {
 		i = 0
 	}else {
+		log.Error("[BlockChainGetHeight] DefaultLedger Store:", i)
 		i = ledger.DefaultLedger.Store.GetHeight()
 	}
+	log.Error("[BlockChainGetHeight] height:", i)
 	avm.PushData(e, i)
 	return true, nil
 }

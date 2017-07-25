@@ -2,6 +2,7 @@ package avm
 
 import (
 	. "DNA/vm/avm/errors"
+	"DNA/common/log"
 )
 
 type IInteropService interface {
@@ -45,6 +46,7 @@ func (i *InteropService) GetServiceMap() map[string]func(*ExecutionEngine) (bool
 
 func (i *InteropService) Invoke(methodName string, engine *ExecutionEngine) (bool, error) {
 	if v, ok := i.serviceMap[methodName]; ok {
+		log.Error("Invoke MethodName:", methodName)
 		return v(engine)
 	}
 	return false, ErrNotSupportService

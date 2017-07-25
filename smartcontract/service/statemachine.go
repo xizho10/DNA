@@ -230,6 +230,7 @@ func (s *StateMachine) StorageGet(engine *avm.ExecutionEngine) (bool, error) {
 		return false, err
 	}
 	key := avm.PopByteArray(engine)
+	log.Error("[StorageGet] key:", key)
 	storageKey := states.NewStorageKey(context.codeHash, key)
 	item, err := s.DBCache.TryGet(store.ST_Storage, storage.KeyToStr(storageKey))
 	if err != nil {
@@ -245,8 +246,10 @@ func (s *StateMachine) StoragePut(engine *avm.ExecutionEngine) (bool, error) {
 	context := opInterface.(*StorageContext)
 	key := avm.PopByteArray(engine)
 	value := avm.PopByteArray(engine)
+	log.Error("[StoragePut] key:", key)
+	log.Error("[StoragePut] value:", value)
 	storageKey := states.NewStorageKey(context.codeHash, key)
-	s.DBCache.GetOrAdd(store.ST_Storage, storage.KeyToStr(storageKey), states.NewStorageItem(value))
+	s.DBCache.GetWriteSet().Add(store.ST_Storage, storage.KeyToStr(storageKey), states.NewStorageItem(value))
 	return true, nil
 }
 

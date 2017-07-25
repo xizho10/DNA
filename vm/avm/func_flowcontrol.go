@@ -2,6 +2,7 @@ package avm
 
 import (
 	. "DNA/vm/avm/errors"
+	"DNA/common/log"
 )
 
 func opNop(e *ExecutionEngine) (VMState, error) {
@@ -68,6 +69,10 @@ func opSysCall(e *ExecutionEngine) (VMState, error) {
 	}
 
 	s := e.context.OpReader.ReadVarString()
+
+	log.Error("[opSysCall] service name:", s)
+
+	log.Error("[opSysCall] service:", e.service.serviceMap)
 
 	success, err := e.service.Invoke(s, e)
 	if success {

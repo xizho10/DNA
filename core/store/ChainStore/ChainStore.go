@@ -1279,8 +1279,8 @@ func (bd *ChainStore) GetHeaderHeight() uint32 {
 }
 
 func (bd *ChainStore) GetHeight() uint32 {
-	bd.mu.RLock()
-	defer bd.mu.RUnlock()
+	//bd.mu.RLock()
+	//defer bd.mu.RUnlock()
 
 	return bd.currentBlockHeight
 }
