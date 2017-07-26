@@ -36,8 +36,7 @@ func (ba *ByteArray) Equals(other StackItemInterface) bool {
 
 func (ba *ByteArray) GetBigInteger() *big.Int {
 	bi := new(big.Int)
-	return bi.SetBytes(ba.value)
-	//return big.NewInt(int64(binary.LittleEndian.Uint64(ba.value)))
+	return bi.SetBytes(ToArrayReverse(ba.value))
 }
 
 func (ba *ByteArray) GetBoolean() bool{
@@ -60,3 +59,13 @@ func (ba *ByteArray) GetInterface() interfaces.IInteropInterface {
 func (ba *ByteArray) GetArray() []StackItemInterface {
 	return []StackItemInterface{ba}
 }
+
+func ToArrayReverse(arr []byte) []byte {
+	l := len(arr)
+	var x []byte = make([]byte, l)
+	for i, j := 0, l-1; i < j; i, j = i+1, j-1 {
+		x[i], x[j] = arr[j], arr[i]
+	}
+	return x
+}
+

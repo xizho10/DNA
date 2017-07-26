@@ -48,7 +48,7 @@ var (
 		TOALTSTACK:   {TOALTSTACK, "TOALTSTACK", opToAltStack},
 		FROMALTSTACK: {FROMALTSTACK, "FROMALTSTACK", opFromAltStack},
 		XDROP:        {XDROP, "XDROP", opXDrop},
-		XSWAP:        {XSWAP, "XSWAPP", opXSwap},
+		XSWAP:        {XSWAP, "XSWAP", opXSwap},
 		XTUCK:        {XTUCK, "XTUCK", opXTuck},
 		DEPTH:        {DEPTH, "DEPTH", opDepth},
 		DROP:         {DROP, "DROP", opDrop},
