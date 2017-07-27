@@ -110,7 +110,7 @@ func (sc *SmartContract) InvokeResult() (interface{}, error) {
 		engine := sc.Engine.(*avm.ExecutionEngine)
 		log.Error("==========type========", sc.ReturnType)
 		log.Error("==========type========", engine.GetEvaluationStackCount())
-		if engine.GetEvaluationStackCount() > 0 {
+		if engine.GetEvaluationStackCount() > 0 && avm.Peek(engine).GetStackItem() != nil{
 			switch sc.ReturnType {
 			case contract.Boolean:
 				log.Error("=========Result==========", avm.Peek(engine))
@@ -121,6 +121,7 @@ func (sc *SmartContract) InvokeResult() (interface{}, error) {
 				log.Error("=========Result ByteArray==========", string(avm.Peek(engine).GetStackItem().GetByteArray()))
 				return string(avm.PopByteArray(engine)), nil
 			case contract.Object:
+				log.Error("==============Object============", avm.Peek(engine).GetStackItem())
 				data := avm.PopInteropInterface(engine)
 				switch data.(type) {
 				case *ledger.Header:

@@ -10,6 +10,7 @@ import (
 	"hash"
 	"crypto/sha1"
 	"crypto/sha256"
+	"fmt"
 )
 
 type BigIntSorter []big.Int
@@ -360,9 +361,12 @@ func NewStackItemInterface(data interface{}) types.StackItemInterface {
 		stackItem = types.NewByteArray(data.([]byte))
 	case []types.StackItemInterface:
 		stackItem = types.NewArray(data.([]types.StackItemInterface))
+	case types.StackItemInterface:
+		stackItem = data.(types.StackItemInterface)
 	case interfaces.IInteropInterface:
 		stackItem = types.NewInteropInterface(data.(interfaces.IInteropInterface))
 	default:
+		fmt.Println("=======================type invalid==============================")
 	}
 	return stackItem
 }

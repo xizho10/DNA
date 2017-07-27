@@ -131,6 +131,7 @@ func (s *StateReader) BlockChainGetHeader(e *avm.ExecutionEngine) (bool, error) 
 	}else {
 		return false, errors.New("The data length is error in function blockchaningetheader!")
 	}
+	log.Error("[BlockChainGetHeader] header:", header)
 	avm.PushData(e, header)
 	return true, nil
 }

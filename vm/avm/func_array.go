@@ -4,6 +4,7 @@ import (
 	. "DNA/vm/avm/errors"
 	"fmt"
 	"DNA/vm/avm/types"
+	"reflect"
 )
 
 func opArraySize(e *ExecutionEngine) (VMState, error) {
@@ -37,7 +38,13 @@ func opUnpack(e *ExecutionEngine) (VMState, error) {
 
 func opPickItem(e *ExecutionEngine) (VMState, error) {
 	index := PopInt(e)
+	if index < 0 {
+		return FAULT, ErrFault
+	}
 	items := PopArray(e)
+	if reflect.TypeOf(items).Kind() != reflect.Slice && reflect.TypeOf(items).Kind() != reflect.Array {
+		return FAULT, ErrNotArray
+	}
 	if index >= len(items) {
 		return FAULT, ErrOverLen
 	}
