@@ -125,10 +125,13 @@ func (sc *SmartContract) InvokeResult() (interface{}, error) {
 				data := avm.PopInteropInterface(engine)
 				switch data.(type) {
 				case *ledger.Header:
+					log.Error("==============ledger.Header============", data.(*ledger.Header))
 					return service.GetHeaderInfo(data.(*ledger.Header)), nil
 				case *ledger.Block:
+					log.Error("==============ledger.Block============", data.(*ledger.Block))
 					return service.GetBlockInfo(data.(*ledger.Block)), nil
 				case *transaction.Transaction:
+					log.Error("==============transaction.Transaction============", data.(*transaction.Transaction))
 					return service.GetTransactionInfo(data.(*transaction.Transaction)), nil
 				case *states.AccountState:
 					return service.GetAccountInfo(data.(*states.AccountState)), nil

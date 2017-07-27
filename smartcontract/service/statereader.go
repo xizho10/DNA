@@ -37,7 +37,7 @@ func NewStateReader() *StateReader {
 	stateReader.Register("AntShares.Header.GetNextConsensus", stateReader.HeaderGetNextConsensus);
 
 	stateReader.Register("AntShares.Block.GetTransactionCount", stateReader.BlockGetTransactionCount);
-	stateReader.Register("AntShares.Block.GetTransactions", stateReader.BlockGetTransactions);
+	stateReader.Register("AntShares.Header.GetTransactions", stateReader.BlockGetTransactions);
 	stateReader.Register("AntShares.Block.GetTransaction", stateReader.BlockGetTransaction);
 
 	stateReader.Register("AntShares.Transaction.GetHash", stateReader.TransactionGetHash);
@@ -288,15 +288,19 @@ func (s *StateReader) BlockGetTransactionCount(e *avm.ExecutionEngine) (bool, er
 }
 
 func (s *StateReader) BlockGetTransactions(e *avm.ExecutionEngine) (bool, error) {
+	fmt.Println("[BlockGetTransactions]")
 	d := avm.PopInteropInterface(e)
+	fmt.Println("[BlockGetTransactions] data", d)
 	if d == nil {
 		return false, fmt.Errorf("%v", "Get block data error in function BlockGetTransactions")
 	}
 	transactions := d.(*ledger.Block).Transactions
 	transactionList := make([]types.StackItemInterface, 0)
+	fmt.Println("================len transactions==============", len(transactions))
 	for _, v := range transactions {
 		transactionList = append(transactionList, types.NewInteropInterface(v))
 	}
+	fmt.Println("================transactionList==============", transactionList)
 	avm.PushData(e, transactionList)
 	return true, nil
 }
