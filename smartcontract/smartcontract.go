@@ -120,6 +120,8 @@ func (sc *SmartContract) InvokeResult() (interface{}, error) {
 			case contract.ByteArray:
 				log.Error("=========Result ByteArray==========", string(avm.Peek(engine).GetStackItem().GetByteArray()))
 				return string(avm.PopByteArray(engine)), nil
+			case contract.Hash160, contract.Hash256:
+				return common.ToHexString(common.ToArrayReverse(avm.PopByteArray(engine))), nil
 			case contract.Object:
 				log.Error("==============Object============", avm.Peek(engine).GetStackItem())
 				data := avm.PopInteropInterface(engine)

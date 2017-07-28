@@ -72,6 +72,15 @@ func HexToBytes(value string) ([]byte, error) {
 	return hex.DecodeString(value)
 }
 
+func ToArrayReverse(arr []byte) []byte {
+	l := len(arr)
+	var x []byte = make([]byte, l)
+	for i, j := 0, l-1; i < j; i, j = i+1, j-1 {
+		x[i], x[j] = arr[j], arr[i]
+	}
+	return x
+}
+
 func HexToBytesReverse(value string) ([]byte, error) {
 	u, err := hex.DecodeString(value)
 	length := len(u)
@@ -81,6 +90,7 @@ func HexToBytesReverse(value string) ([]byte, error) {
 	}
 	return x, err
 }
+
 func ClearBytes(arr []byte, len int) {
 	for i := 0; i < len; i++ {
 		arr[i] = 0
