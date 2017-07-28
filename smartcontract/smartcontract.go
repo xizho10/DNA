@@ -2,26 +2,29 @@ package smartcontract
 
 import (
 	"DNA/common"
-	"math/big"
-	"DNA/vm/avm/interfaces"
 	sig "DNA/core/signature"
-	"DNA/smartcontract/storage"
 	"DNA/smartcontract/service"
+	"DNA/smartcontract/storage"
 	"DNA/smartcontract/types"
 	"DNA/vm/avm"
-	"DNA/vm/evm"
-	"DNA/errors"
+	"DNA/vm/avm/interfaces"
+	"math/big"
+	//"DNA/vm/evm"
 	"DNA/core/contract"
-	"DNA/vm/evm/abi"
-	"bytes"
-	"DNA/common/serialization"
-	"fmt"
+	"DNA/errors"
+	//"DNA/vm/evm/abi"
 	"DNA/common/log"
-	"strconv"
+	"DNA/common/serialization"
+	"DNA/core/asset"
 	"DNA/core/ledger"
 	"DNA/core/transaction"
 	"DNA/smartcontract/states"
-	"DNA/core/asset"
+	"bytes"
+	"fmt"
+	"strconv"
+	//"github.com/ethereum/go-ethereum/accounts/abi"
+	//"github.com/ethereum/go-ethereum/accounts/abi"
+	//"github.com/ethereum/go-ethereum/accounts/abi"
 )
 
 type SmartContract struct {
@@ -29,11 +32,11 @@ type SmartContract struct {
 	Code           []byte
 	Input          []byte
 	ParameterTypes []contract.ContractParameterType
-	ABI            abi.ABI
-	Caller         common.Uint160
-	CodeHash       common.Uint160
-	VMType         types.VmType
-	ReturnType     contract.ContractParameterType
+	//ABI            abi.ABI
+	Caller     common.Uint160
+	CodeHash   common.Uint160
+	VMType     types.VmType
+	ReturnType contract.ContractParameterType
 }
 
 type Context struct {
@@ -71,17 +74,17 @@ func NewSmartContract(context *Context) (*SmartContract, error) {
 				context.Gas,
 			)
 		case types.EVM:
-			e = evm.NewExecutionEngine(context.DBCache, context.Time, context.BlockNumber, context.Gas)
+			//e = evm.NewExecutionEngine(context.DBCache, context.Time, context.BlockNumber, context.Gas)
 		}
 
 		return &SmartContract{
-			Engine: e,
-			Code: context.Code,
-			CodeHash: context.CodeHash,
-			Input: context.Input,
-			Caller: context.Caller,
-			VMType: vmType,
-			ReturnType: context.ReturnType,
+			Engine:         e,
+			Code:           context.Code,
+			CodeHash:       context.CodeHash,
+			Input:          context.Input,
+			Caller:         context.Caller,
+			VMType:         vmType,
+			ReturnType:     context.ReturnType,
 			ParameterTypes: context.ParameterTypes,
 		}, nil
 	} else {
@@ -110,7 +113,7 @@ func (sc *SmartContract) InvokeResult() (interface{}, error) {
 		engine := sc.Engine.(*avm.ExecutionEngine)
 		log.Error("==========type========", sc.ReturnType)
 		log.Error("==========type========", engine.GetEvaluationStackCount())
-		if engine.GetEvaluationStackCount() > 0 && avm.Peek(engine).GetStackItem() != nil{
+		if engine.GetEvaluationStackCount() > 0 && avm.Peek(engine).GetStackItem() != nil {
 			switch sc.ReturnType {
 			case contract.Boolean:
 				log.Error("=========Result==========", avm.Peek(engine))
