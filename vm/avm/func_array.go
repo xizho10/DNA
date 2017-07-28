@@ -4,7 +4,6 @@ import (
 	. "DNA/vm/avm/errors"
 	"fmt"
 	"DNA/vm/avm/types"
-	"reflect"
 )
 
 func opArraySize(e *ExecutionEngine) (VMState, error) {
@@ -41,13 +40,18 @@ func opPickItem(e *ExecutionEngine) (VMState, error) {
 	if index < 0 {
 		return FAULT, ErrFault
 	}
-	items := PopArray(e)
-	if reflect.TypeOf(items).Kind() != reflect.Slice || reflect.TypeOf(items).Kind() != reflect.Array {
-		return FAULT, ErrNotArray
+	arrItem := Pop(e)
+
+	if arrItem == nil {
+		return NONE, nil
 	}
-	if index >= len(items) {
+
+	items := arrItem.GetStackItem().GetArray()
+
+	if index < 0 || index >= len(items) {
 		return FAULT, ErrOverLen
 	}
+
 	PushData(e, items[index])
 	return NONE, nil
 }
@@ -55,11 +59,13 @@ func opPickItem(e *ExecutionEngine) (VMState, error) {
 func opSetItem(e *ExecutionEngine) (VMState, error) {
 	newItem := Pop(e)
 	index := PopInt(e)
-	arrItem := PopStackItem(e)
-	if arrItem == nil || reflect.TypeOf(arrItem).Kind() != reflect.Slice || reflect.TypeOf(arrItem).Kind() != reflect.Array {
+	arrItem := Pop(e)
+
+	if arrItem == nil {
 		return NONE, nil
 	}
-	items := arrItem.GetArray()
+	items := arrItem.GetStackItem().GetArray()
+
 	if index < 0 || index >= len(items) {
 		return FAULT, fmt.Errorf("%v", "set item invalid index")
 	}

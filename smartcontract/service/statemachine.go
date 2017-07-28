@@ -30,15 +30,15 @@ func NewStateMachine(dbCache storage.DBCache) *StateMachine {
 	var stateMachine StateMachine
 	stateMachine.DBCache = dbCache
 	stateMachine.StateReader = NewStateReader()
-	stateMachine.StateReader.Register("AntShares.Blockchain.RegisterValidator", stateMachine.RegisterValidator)
-	stateMachine.StateReader.Register("AntShares.Blockchain.CreateAsset", stateMachine.CreateAsset)
-	stateMachine.StateReader.Register("AntShares.Blockchain.CreateContract", stateMachine.CreateContract)
-	stateMachine.StateReader.Register("AntShares.Blockchain.GetContract", stateMachine.GetContract)
-	stateMachine.StateReader.Register("AntShares.Asset.Renew", stateMachine.AssetRenew)
-	stateMachine.StateReader.Register("AntShares.Storage.Get", stateMachine.StorageGet);
-	stateMachine.StateReader.Register("AntShares.Contract.Destroy", stateMachine.ContractDestory)
-	stateMachine.StateReader.Register("AntShares.Storage.Put", stateMachine.StoragePut)
-	stateMachine.StateReader.Register("AntShares.Storage.Delete", stateMachine.StorageDelete)
+	stateMachine.StateReader.Register("Neo.Blockchain.RegisterValidator", stateMachine.RegisterValidator)
+	stateMachine.StateReader.Register("Neo.Blockchain.CreateAsset", stateMachine.CreateAsset)
+	stateMachine.StateReader.Register("Neo.Blockchain.CreateContract", stateMachine.CreateContract)
+	stateMachine.StateReader.Register("Neo.Blockchain.GetContract", stateMachine.GetContract)
+	stateMachine.StateReader.Register("Neo.Asset.Renew", stateMachine.AssetRenew)
+	stateMachine.StateReader.Register("Neo.Storage.Get", stateMachine.StorageGet);
+	stateMachine.StateReader.Register("Neo.Contract.Destroy", stateMachine.ContractDestory)
+	stateMachine.StateReader.Register("Neo.Storage.Put", stateMachine.StoragePut)
+	stateMachine.StateReader.Register("Neo.Storage.Delete", stateMachine.StorageDelete)
 	return &stateMachine
 }
 

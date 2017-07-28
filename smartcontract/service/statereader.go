@@ -20,58 +20,58 @@ type StateReader struct {
 func NewStateReader() *StateReader {
 	var stateReader StateReader
 	stateReader.serviceMap = make(map[string]func(*avm.ExecutionEngine) (bool, error), 0)
-	stateReader.Register("AntShares.Blockchain.GetHeight", stateReader.BlockChainGetHeight)
-	stateReader.Register("AntShares.Blockchain.GetHeader", stateReader.BlockChainGetHeader)
-	stateReader.Register("AntShares.Blockchain.GetBlock", stateReader.BlockChainGetBlock)
-	stateReader.Register("AntShares.Blockchain.GetTransaction", stateReader.BlockChainGetTransaction)
-	stateReader.Register("AntShares.Blockchain.GetAccount", stateReader.BlockChainGetAccount)
-	stateReader.Register("AntShares.Blockchain.GetValidators", stateReader.BlockChainGetValidators)
-	stateReader.Register("AntShares.Blockchain.GetAsset", stateReader.BlockChainGetAsset)
+	stateReader.Register("Neo.Blockchain.GetHeight", stateReader.BlockChainGetHeight)
+	stateReader.Register("Neo.Blockchain.GetHeader", stateReader.BlockChainGetHeader)
+	stateReader.Register("Neo.Blockchain.GetBlock", stateReader.BlockChainGetBlock)
+	stateReader.Register("Neo.Blockchain.GetTransaction", stateReader.BlockChainGetTransaction)
+	stateReader.Register("Neo.Blockchain.GetAccount", stateReader.BlockChainGetAccount)
+	stateReader.Register("Neo.Blockchain.GetValidators", stateReader.BlockChainGetValidators)
+	stateReader.Register("Neo.Blockchain.GetAsset", stateReader.BlockChainGetAsset)
 
-	stateReader.Register("AntShares.Header.GetHash", stateReader.HeaderGetHash);
-	stateReader.Register("AntShares.Header.GetVersion", stateReader.HeaderGetVersion);
-	stateReader.Register("AntShares.Header.GetPrevHash", stateReader.HeaderGetPrevHash);
-	stateReader.Register("AntShares.Header.GetMerkleRoot", stateReader.HeaderGetMerkleRoot);
-	stateReader.Register("AntShares.Header.GetTimestamp", stateReader.HeaderGetTimestamp);
-	stateReader.Register("AntShares.Header.GetConsensusData", stateReader.HeaderGetConsensusData);
-	stateReader.Register("AntShares.Header.GetNextConsensus", stateReader.HeaderGetNextConsensus);
+	stateReader.Register("Neo.Header.GetHash", stateReader.HeaderGetHash);
+	stateReader.Register("Neo.Header.GetVersion", stateReader.HeaderGetVersion);
+	stateReader.Register("Neo.Header.GetPrevHash", stateReader.HeaderGetPrevHash);
+	stateReader.Register("Neo.Header.GetMerkleRoot", stateReader.HeaderGetMerkleRoot);
+	stateReader.Register("Neo.Header.GetTimestamp", stateReader.HeaderGetTimestamp);
+	stateReader.Register("Neo.Header.GetConsensusData", stateReader.HeaderGetConsensusData);
+	stateReader.Register("Neo.Header.GetNextConsensus", stateReader.HeaderGetNextConsensus);
 
-	stateReader.Register("AntShares.Block.GetTransactionCount", stateReader.BlockGetTransactionCount);
-	stateReader.Register("AntShares.Block.GetTransactions", stateReader.BlockGetTransactions);
-	stateReader.Register("AntShares.Block.GetTransaction", stateReader.BlockGetTransaction);
+	stateReader.Register("Neo.Block.GetTransactionCount", stateReader.BlockGetTransactionCount);
+	stateReader.Register("Neo.Block.GetTransactions", stateReader.BlockGetTransactions);
+	stateReader.Register("Neo.Block.GetTransaction", stateReader.BlockGetTransaction);
 
-	stateReader.Register("AntShares.Transaction.GetHash", stateReader.TransactionGetHash);
-	stateReader.Register("AntShares.Transaction.GetType", stateReader.TransactionGetType);
-	stateReader.Register("AntShares.Transaction.GetAttributes", stateReader.TransactionGetAttributes);
-	stateReader.Register("AntShares.Transaction.GetInputs", stateReader.TransactionGetInputs);
-	stateReader.Register("AntShares.Transaction.GetOutputs", stateReader.TransactionGetOutputs);
-	stateReader.Register("AntShares.Transaction.GetReferences", stateReader.TransactionGetReferences);
+	stateReader.Register("Neo.Transaction.GetHash", stateReader.TransactionGetHash);
+	stateReader.Register("Neo.Transaction.GetType", stateReader.TransactionGetType);
+	stateReader.Register("Neo.Transaction.GetAttributes", stateReader.TransactionGetAttributes);
+	stateReader.Register("Neo.Transaction.GetInputs", stateReader.TransactionGetInputs);
+	stateReader.Register("Neo.Transaction.GetOutputs", stateReader.TransactionGetOutputs);
+	stateReader.Register("Neo.Transaction.GetReferences", stateReader.TransactionGetReferences);
 
-	stateReader.Register("AntShares.Attribute.GetUsage", stateReader.AttributeGetUsage);
-	stateReader.Register("AntShares.Attribute.GetData", stateReader.AttributeGetData);
+	stateReader.Register("Neo.Attribute.GetUsage", stateReader.AttributeGetUsage);
+	stateReader.Register("Neo.Attribute.GetData", stateReader.AttributeGetData);
 
-	stateReader.Register("AntShares.Input.GetHash", stateReader.InputGetHash);
-	stateReader.Register("AntShares.Input.GetIndex", stateReader.InputGetIndex);
+	stateReader.Register("Neo.Input.GetHash", stateReader.InputGetHash);
+	stateReader.Register("Neo.Input.GetIndex", stateReader.InputGetIndex);
 
-	stateReader.Register("AntShares.Output.GetAssetId", stateReader.OutputGetAssetId);
-	stateReader.Register("AntShares.Output.GetValue", stateReader.OutputGetValue);
-	stateReader.Register("AntShares.Output.GetScriptHash", stateReader.OutputGetCodeHash);
+	stateReader.Register("Neo.Output.GetAssetId", stateReader.OutputGetAssetId);
+	stateReader.Register("Neo.Output.GetValue", stateReader.OutputGetValue);
+	stateReader.Register("Neo.Output.GetScriptHash", stateReader.OutputGetCodeHash);
 
-	stateReader.Register("AntShares.Account.GetScriptHash", stateReader.AccountGetCodeHash);
-	stateReader.Register("AntShares.Account.GetBalance", stateReader.AccountGetBalance);
+	stateReader.Register("Neo.Account.GetScriptHash", stateReader.AccountGetCodeHash);
+	stateReader.Register("Neo.Account.GetBalance", stateReader.AccountGetBalance);
 
-	stateReader.Register("AntShares.Asset.GetAssetId", stateReader.AssetGetAssetId);
-	stateReader.Register("AntShares.Asset.GetAssetType", stateReader.AssetGetAssetType);
-	stateReader.Register("AntShares.Asset.GetAmount", stateReader.AssetGetAmount);
-	stateReader.Register("AntShares.Asset.GetAvailable", stateReader.AssetGetAvailable);
-	stateReader.Register("AntShares.Asset.GetPrecision", stateReader.AssetGetPrecision);
-	stateReader.Register("AntShares.Asset.GetOwner", stateReader.AssetGetOwner);
-	stateReader.Register("AntShares.Asset.GetAdmin", stateReader.AssetGetAdmin);
-	stateReader.Register("AntShares.Asset.GetIssuer", stateReader.AssetGetIssuer);
+	stateReader.Register("Neo.Asset.GetAssetId", stateReader.AssetGetAssetId);
+	stateReader.Register("Neo.Asset.GetAssetType", stateReader.AssetGetAssetType);
+	stateReader.Register("Neo.Asset.GetAmount", stateReader.AssetGetAmount);
+	stateReader.Register("Neo.Asset.GetAvailable", stateReader.AssetGetAvailable);
+	stateReader.Register("Neo.Asset.GetPrecision", stateReader.AssetGetPrecision);
+	stateReader.Register("Neo.Asset.GetOwner", stateReader.AssetGetOwner);
+	stateReader.Register("Neo.Asset.GetAdmin", stateReader.AssetGetAdmin);
+	stateReader.Register("Neo.Asset.GetIssuer", stateReader.AssetGetIssuer);
 
-	stateReader.Register("AntShares.Contract.GetScript", stateReader.ContractGetCode);
+	stateReader.Register("Neo.Contract.GetScript", stateReader.ContractGetCode);
 
-	stateReader.Register("AntShares.Storage.GetContext", stateReader.StorageGetContext);
+	stateReader.Register("Neo.Storage.GetContext", stateReader.StorageGetContext);
 
 	return &stateReader
 }
