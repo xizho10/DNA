@@ -3,6 +3,7 @@ package types
 import (
 	"math/big"
 	"DNA/vm/avm/interfaces"
+	"DNA/common"
 )
 
 type Integer struct {
@@ -38,7 +39,7 @@ func (i *Integer) GetBoolean() bool {
 }
 
 func (i *Integer) GetByteArray() []byte{
-	return i.value.Bytes()
+	return common.ToArrayReverse(i.value.Bytes())
 }
 
 func (i *Integer) GetInterface() interfaces.IInteropInterface {

@@ -308,12 +308,21 @@ func (s *StateReader) BlockGetTransactions(e *avm.ExecutionEngine) (bool, error)
 }
 
 func (s *StateReader) BlockGetTransaction(e *avm.ExecutionEngine) (bool, error) {
+	index := avm.PopInt(e)
+	fmt.Println("[BlockGetTransactions] index", index)
+	if index < 0 {
+		return false, fmt.Errorf("%v", "index invalid in function BlockGetTransaction")
+	}
+	fmt.Println("[BlockGetTransaction]")
 	d := avm.PopInteropInterface(e)
+	fmt.Println("[BlockGetTransactions] data", d)
 	if d == nil {
-		return false, fmt.Errorf("%v", "Get block data error in function BlockGetTransaction")
+		return false, fmt.Errorf("%v", "Get transaction data error in function BlockGetTransaction")
 	}
 	transactions := d.(*ledger.Block).Transactions
-	index := avm.PopInt(e)
+	if index >= len(transactions) {
+		return false, fmt.Errorf("%v", "index over transaction length in function BlockGetTransaction")
+	}
 	avm.PushData(e, transactions[index])
 	return true, nil
 }
