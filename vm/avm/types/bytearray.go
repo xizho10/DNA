@@ -3,6 +3,7 @@ package types
 import (
 	"math/big"
 	"DNA/vm/avm/interfaces"
+	"DNA/common"
 )
 
 type ByteArray struct {
@@ -36,7 +37,7 @@ func (ba *ByteArray) Equals(other StackItemInterface) bool {
 
 func (ba *ByteArray) GetBigInteger() *big.Int {
 	bi := new(big.Int)
-	return bi.SetBytes(ToArrayReverse(ba.value))
+	return bi.SetBytes(common.ToArrayReverse(ba.value))
 }
 
 func (ba *ByteArray) GetBoolean() bool{
@@ -60,12 +61,5 @@ func (ba *ByteArray) GetArray() []StackItemInterface {
 	return []StackItemInterface{ba}
 }
 
-func ToArrayReverse(arr []byte) []byte {
-	l := len(arr)
-	var x []byte = make([]byte, l)
-	for i, j := 0, l-1; i < j; i, j = i+1, j-1 {
-		x[i], x[j] = arr[j], arr[i]
-	}
-	return x
-}
+
 

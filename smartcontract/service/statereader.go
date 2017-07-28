@@ -111,7 +111,9 @@ func (s *StateReader) BlockChainGetHeader(e *avm.ExecutionEngine) (bool, error) 
 	l := len(data)
 	if l <= 5 {
 		b := new(big.Int)
+		log.Error("[BlockChainGetHeight] data:", data)
 		height := uint32(b.SetBytes(common.ToArrayReverse(data)).Int64())
+		log.Error("[BlockChainGetHeight] height:", height)
 		if ledger.DefaultLedger != nil {
 			hash, err := ledger.DefaultLedger.Store.GetBlockHash(height)
 			if err != nil { return false, err }
