@@ -37,7 +37,7 @@ func NewStateReader() *StateReader {
 	stateReader.Register("AntShares.Header.GetNextConsensus", stateReader.HeaderGetNextConsensus);
 
 	stateReader.Register("AntShares.Block.GetTransactionCount", stateReader.BlockGetTransactionCount);
-	stateReader.Register("AntShares.Header.GetTransactions", stateReader.BlockGetTransactions);
+	stateReader.Register("AntShares.Block.GetTransactions", stateReader.BlockGetTransactions);
 	stateReader.Register("AntShares.Block.GetTransaction", stateReader.BlockGetTransaction);
 
 	stateReader.Register("AntShares.Transaction.GetHash", stateReader.TransactionGetHash);

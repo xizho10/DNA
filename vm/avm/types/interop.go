@@ -20,7 +20,7 @@ func (ii *InteropInterface) Equals(other StackItemInterface) bool {
 }
 
 func (ii *InteropInterface) GetBigInteger() *big.Int {
-	return nil
+	return big.NewInt(0)
 }
 
 func (ii *InteropInterface) GetBoolean() bool {

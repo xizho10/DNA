@@ -42,7 +42,7 @@ func opPickItem(e *ExecutionEngine) (VMState, error) {
 		return FAULT, ErrFault
 	}
 	items := PopArray(e)
-	if reflect.TypeOf(items).Kind() != reflect.Slice && reflect.TypeOf(items).Kind() != reflect.Array {
+	if reflect.TypeOf(items).Kind() != reflect.Slice || reflect.TypeOf(items).Kind() != reflect.Array {
 		return FAULT, ErrNotArray
 	}
 	if index >= len(items) {
@@ -55,11 +55,15 @@ func opPickItem(e *ExecutionEngine) (VMState, error) {
 func opSetItem(e *ExecutionEngine) (VMState, error) {
 	newItem := Pop(e)
 	index := PopInt(e)
-	arrItem := PopArray(e)
-	if index >= len(arrItem) {
+	arrItem := PopStackItem(e)
+	if arrItem == nil || reflect.TypeOf(arrItem).Kind() != reflect.Slice || reflect.TypeOf(arrItem).Kind() != reflect.Array {
+		return NONE, nil
+	}
+	items := arrItem.GetArray()
+	if index < 0 || index >= len(items) {
 		return FAULT, fmt.Errorf("%v", "set item invalid index")
 	}
-	arrItem[index] = newItem.GetStackItem()
+	items[index] = newItem.GetStackItem()
 	return NONE, nil
 }
 
