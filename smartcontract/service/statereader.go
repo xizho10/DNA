@@ -111,7 +111,7 @@ func (s *StateReader) BlockChainGetHeader(e *avm.ExecutionEngine) (bool, error) 
 	l := len(data)
 	if l <= 5 {
 		b := new(big.Int)
-		height := uint32(b.SetBytes(data).Int64())
+		height := uint32(b.SetBytes(common.ToArrayReverse(data)).Int64())
 		if ledger.DefaultLedger != nil {
 			hash, err := ledger.DefaultLedger.Store.GetBlockHash(height)
 			if err != nil { return false, err }
@@ -144,7 +144,7 @@ func (s *StateReader) BlockChainGetBlock(e *avm.ExecutionEngine) (bool, error) {
 	l := len(data)
 	if l <= 5 {
 		b := new(big.Int)
-		height := uint32(b.SetBytes(data).Int64())
+		height := uint32(b.SetBytes(common.ToArrayReverse(data)).Int64())
 		if ledger.DefaultLedger != nil {
 			hash, err := ledger.DefaultLedger.Store.GetBlockHash(height)
 			if err != nil { return false, err }
