@@ -13,8 +13,11 @@ import (
 )
 
 var ws *websocket.WsServer
-var pushBlockFlag bool = false
-var pushRawBlock bool = false
+var (
+	pushBlockFlag    bool = false
+	pushRawBlockFlag bool = false
+	pushBlockTxsFlag bool = false
+)
 
 func StartServer(n Noder) {
 	common.SetNode(n)
@@ -28,6 +31,11 @@ func SendBlock2WSclient(v interface{}) {
 	if Parameters.HttpWsPort != 0 && pushBlockFlag {
 		go func() {
 			PushBlock(v)
+		}()
+	}
+	if Parameters.HttpWsPort != 0 && pushBlockTxsFlag {
+		go func() {
+			PushBlockTransactions(v)
 		}()
 	}
 }
@@ -50,11 +58,17 @@ func GetWsPushBlockFlag() bool {
 func SetWsPushBlockFlag(b bool) {
 	pushBlockFlag = b
 }
-func GetWsPushRawBlock() bool {
-	return pushRawBlock
+func GetPushRawBlockFlag() bool {
+	return pushRawBlockFlag
 }
-func SetWsPushRawBlock(b bool) {
-	pushRawBlock = b
+func SetPushRawBlockFlag(b bool) {
+	pushRawBlockFlag = b
+}
+func GetPushBlockTxsFlag() bool {
+	return pushBlockTxsFlag
+}
+func SetPushBlockTxsFlag(b bool) {
+	pushBlockTxsFlag = b
 }
 func SetTxHashMap(txhash string, sessionid string) {
 	if ws != nil {
@@ -80,7 +94,7 @@ func PushBlock(v interface{}) {
 	if ws != nil {
 		resp := common.ResponsePack(Err.SUCCESS)
 		if block, ok := v.(*ledger.Block); ok {
-			if pushRawBlock == true {
+			if pushRawBlockFlag == true {
 				w := bytes.NewBuffer(nil)
 				block.Serialize(w)
 				resp["Result"] = ToHexString(w.Bytes())
@@ -91,4 +105,17 @@ func PushBlock(v interface{}) {
 			ws.PushResult(resp)
 		}
 	}
+}
+func PushBlockTransactions(v interface{}) {
+	if ws != nil {
+		resp := common.ResponsePack(Err.SUCCESS)
+		if block, ok := v.(*ledger.Block); ok {
+			if pushBlockTxsFlag == true {
+				resp["Result"] = common.GetBlockTransactions(block)
+			}
+			resp["Action"] = "sendblocktransactions"
+			ws.PushResult(resp)
+		}
+	}
+
 }

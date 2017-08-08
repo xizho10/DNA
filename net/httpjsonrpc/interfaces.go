@@ -267,7 +267,7 @@ func sendRawTransaction(params []interface{}) map[string]interface{} {
 			return DnaRpcInvalidTransaction
 		}
 		hash = txn.Hash()
-		if err := VerifyAndSendTx(&txn); err != nil {
+		if err, _ := VerifyAndSendTx(&txn); err != nil {
 			return DnaRpcInternalError
 		}
 	default:
@@ -547,7 +547,7 @@ func regDataFile(params []interface{}) map[string]interface{} {
 		}
 
 		hash = txn.Hash()
-		if err := VerifyAndSendTx(&txn); err != nil {
+		if err, _ := VerifyAndSendTx(&txn); err != nil {
 			return DnaRpcInternalError
 		}
 	default:

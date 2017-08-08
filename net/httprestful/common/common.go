@@ -119,6 +119,25 @@ func GetBlockInfo(block *ledger.Block) BlockInfo {
 	}
 	return b
 }
+func GetBlockTransactions(block *ledger.Block) interface{} {
+	trans := make([]string, len(block.Transactions))
+	for k, v := range block.Transactions {
+		txhash := v.Hash()
+		trans[k] = ToHexString(txhash.ToArrayReverse())
+	}
+	hash := block.Hash()
+	type BlockTransactions struct {
+		Hash         string
+		Height       uint32
+		Transactions []string
+	}
+	b := BlockTransactions{
+		Hash:         ToHexString(hash.ToArrayReverse()),
+		Height:       block.Blockdata.Height,
+		Transactions: trans,
+	}
+	return b
+}
 func getBlock(hash Uint256, getTxBytes bool) (interface{}, int64) {
 	block, err := ledger.DefaultLedger.Store.GetBlock(hash)
 	if err != nil {
@@ -155,6 +174,33 @@ func GetBlockByHash(cmd map[string]interface{}) map[string]interface{} {
 
 	resp["Result"], resp["Error"] = getBlock(hash, getTxBytes)
 
+	return resp
+}
+func GetBlockTxsByHeight(cmd map[string]interface{}) map[string]interface{} {
+	resp := ResponsePack(Err.SUCCESS)
+
+	param := cmd["Height"].(string)
+	if len(param) == 0 {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	height, err := strconv.ParseInt(param, 10, 64)
+	if err != nil {
+		resp["Error"] = Err.INVALID_PARAMS
+		return resp
+	}
+	index := uint32(height)
+	hash, err := ledger.DefaultLedger.Store.GetBlockHash(index)
+	if err != nil {
+		resp["Error"] = Err.UNKNOWN_BLOCK
+		return resp
+	}
+	block, err := ledger.DefaultLedger.Store.GetBlock(hash)
+	if err != nil {
+		resp["Error"] = Err.UNKNOWN_BLOCK
+		return resp
+	}
+	resp["Result"] = GetBlockTransactions(block)
 	return resp
 }
 func GetBlockByHeight(cmd map[string]interface{}) map[string]interface{} {
@@ -410,8 +456,8 @@ func SendRawTransaction(cmd map[string]interface{}) map[string]interface{} {
 	}
 	var hash Uint256
 	hash = txn.Hash()
-	if err := VerifyAndSendTx(&txn); err != nil {
-		resp["Error"] = Err.INTERNAL_ERROR
+	if err, errCode := VerifyAndSendTx(&txn); err != nil {
+		resp["Error"] = int64(errCode)
 		return resp
 	}
 	resp["Result"] = ToHexString(hash.ToArrayReverse())

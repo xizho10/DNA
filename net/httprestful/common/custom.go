@@ -106,8 +106,8 @@ func SendRecord(cmd map[string]interface{}) map[string]interface{} {
 		record := tx.NewTxAttribute(tx.Description, data)
 		transferTx.Attributes = append(transferTx.Attributes, &record)
 	}
-	if err := VerifyAndSendTx(transferTx); err != nil {
-		resp["Error"] = Err.INTERNAL_ERROR
+	if err, errCode := VerifyAndSendTx(transferTx); err != nil {
+		resp["Error"] = int64(errCode)
 		return resp
 	}
 	hash := transferTx.Hash()
@@ -127,8 +127,8 @@ func SendRecordTransaction(cmd map[string]interface{}) map[string]interface{} {
 
 	hash := recordTx.Hash()
 	resp["Result"] = ToHexString(hash.ToArrayReverse())
-	if err := VerifyAndSendTx(recordTx); err != nil {
-		resp["Error"] = Err.INTERNAL_ERROR
+	if err, errCode := VerifyAndSendTx(recordTx); err != nil {
+		resp["Error"] = int64(errCode)
 		return resp
 	}
 	return resp

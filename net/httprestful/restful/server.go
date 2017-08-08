@@ -34,27 +34,28 @@ type restServer struct {
 }
 
 const (
-	Api_Getconnectioncount = "/api/v1/node/connectioncount"
-	Api_Getblockbyheight   = "/api/v1/block/details/height/:height"
-	Api_Getblockbyhash     = "/api/v1/block/details/hash/:hash"
-	Api_Getblockheight     = "/api/v1/block/height"
-	Api_Getblockhash       = "/api/v1/block/hash/:height"
-	Api_GetTotalIssued     = "/api/v1/totalissued/:assetid"
-	Api_Gettransaction     = "/api/v1/transaction/:hash"
-	Api_Getasset           = "/api/v1/asset/:hash"
-	Api_GetBalanceByAddr   = "/api/v1/asset/balances/:addr"
-	Api_GetBalancebyAsset  = "/api/v1/asset/balance/:addr/:assetid"
-	Api_GetUTXObyAsset     = "/api/v1/asset/utxo/:addr/:assetid"
-	Api_GetUTXObyAddr      = "/api/v1/asset/utxos/:addr"
-	Api_SendRawTx          = "/api/v1/transaction"
-	Api_SendRcdTxByTrans   = "/api/v1/custom/transaction/record"
-	Api_GetStateUpdate     = "/api/v1/stateupdate/:namespace/:key"
-	Api_OauthServerUrl     = "/api/v1/config/oauthserver/url"
-	Api_NoticeServerUrl    = "/api/v1/config/noticeserver/url"
-	Api_NoticeServerState  = "/api/v1/config/noticeserver/state"
-	Api_WebsocketState     = "/api/v1/config/websocket/state"
-	Api_Restart            = "/api/v1/restart"
-	Api_GetContract        = "/api/v1/contract/:hash"
+	Api_Getconnectioncount  = "/api/v1/node/connectioncount"
+	Api_GetblockTxsByHeight = "/api/v1/block/transactions/height/:height"
+	Api_Getblockbyheight    = "/api/v1/block/details/height/:height"
+	Api_Getblockbyhash      = "/api/v1/block/details/hash/:hash"
+	Api_Getblockheight      = "/api/v1/block/height"
+	Api_Getblockhash        = "/api/v1/block/hash/:height"
+	Api_GetTotalIssued      = "/api/v1/totalissued/:assetid"
+	Api_Gettransaction      = "/api/v1/transaction/:hash"
+	Api_Getasset            = "/api/v1/asset/:hash"
+	Api_GetBalanceByAddr    = "/api/v1/asset/balances/:addr"
+	Api_GetBalancebyAsset   = "/api/v1/asset/balance/:addr/:assetid"
+	Api_GetUTXObyAsset      = "/api/v1/asset/utxo/:addr/:assetid"
+	Api_GetUTXObyAddr       = "/api/v1/asset/utxos/:addr"
+	Api_SendRawTx           = "/api/v1/transaction"
+	Api_SendRcdTxByTrans    = "/api/v1/custom/transaction/record"
+	Api_GetStateUpdate      = "/api/v1/stateupdate/:namespace/:key"
+	Api_OauthServerUrl      = "/api/v1/config/oauthserver/url"
+	Api_NoticeServerUrl     = "/api/v1/config/noticeserver/url"
+	Api_NoticeServerState   = "/api/v1/config/noticeserver/state"
+	Api_WebsocketState      = "/api/v1/config/websocket/state"
+	Api_Restart             = "/api/v1/restart"
+	Api_GetContract         = "/api/v1/contract/:hash"
 )
 
 func InitRestServer(checkAccessToken func(string, string) (string, int64, interface{})) ApiServer {
@@ -111,7 +112,10 @@ func (rt *restServer) setWebsocketState(cmd map[string]interface{}) map[string]i
 		httpwebsocket.SetWsPushBlockFlag(b)
 	}
 	if b, ok := cmd["PushRawBlock"].(bool); ok {
-		httpwebsocket.SetWsPushRawBlock(b)
+		httpwebsocket.SetPushRawBlockFlag(b)
+	}
+	if b, ok := cmd["PushBlockTxs"].(bool); ok {
+		httpwebsocket.SetPushBlockTxsFlag(b)
 	}
 	if wsPort, ok := cmd["Port"].(float64); ok && wsPort != 0 {
 		Parameters.HttpWsPort = int(wsPort)
@@ -125,30 +129,32 @@ func (rt *restServer) setWebsocketState(cmd map[string]interface{}) map[string]i
 	result["Open"] = startFlag
 	result["Port"] = Parameters.HttpWsPort
 	result["PushBlock"] = httpwebsocket.GetWsPushBlockFlag()
-	result["PushRawBlock"] = httpwebsocket.GetWsPushRawBlock()
+	result["PushRawBlock"] = httpwebsocket.GetPushRawBlockFlag()
+	result["PushBlockTxs"] = httpwebsocket.GetPushBlockTxsFlag()
 	resp["Result"] = result
 	return resp
 }
 func (rt *restServer) registryMethod() {
 
 	getMethodMap := map[string]Action{
-		Api_Getconnectioncount: {name: "getconnectioncount", handler: GetConnectionCount},
-		Api_Getblockbyheight:   {name: "getblockbyheight", handler: GetBlockByHeight},
-		Api_Getblockbyhash:     {name: "getblockbyhash", handler: GetBlockByHash},
-		Api_Getblockheight:     {name: "getblockheight", handler: GetBlockHeight},
-		Api_Getblockhash:       {name: "getblockhash", handler: GetBlockHash},
-		Api_GetTotalIssued:     {name: "gettotalissued", handler: GetTotalIssued},
-		Api_Gettransaction:     {name: "gettransaction", handler: GetTransactionByHash},
-		Api_Getasset:           {name: "getasset", handler: GetAssetByHash},
-		Api_GetContract:        {name: "getcontract", handler: GetContract},
-		Api_GetUTXObyAddr:      {name: "getutxobyaddr", handler: GetUnspends},
-		Api_GetUTXObyAsset:     {name: "getutxobyasset", handler: GetUnspendOutput},
-		Api_GetBalanceByAddr:   {name: "getbalancebyaddr", handler: GetBalanceByAddr},
-		Api_GetBalancebyAsset:  {name: "getbalancebyasset", handler: GetBalanceByAsset},
-		Api_OauthServerUrl:     {name: "getoauthserverurl", handler: GetOauthServerUrl},
-		Api_NoticeServerUrl:    {name: "getnoticeserverurl", handler: GetNoticeServerUrl},
-		Api_Restart:            {name: "restart", handler: rt.Restart},
-		Api_GetStateUpdate:     {name: "getstateupdate", handler: GetStateUpdate},
+		Api_Getconnectioncount:  {name: "getconnectioncount", handler: GetConnectionCount},
+		Api_GetblockTxsByHeight: {name: "getblocktxsbyheight", handler: GetBlockTxsByHeight},
+		Api_Getblockbyheight:    {name: "getblockbyheight", handler: GetBlockByHeight},
+		Api_Getblockbyhash:      {name: "getblockbyhash", handler: GetBlockByHash},
+		Api_Getblockheight:      {name: "getblockheight", handler: GetBlockHeight},
+		Api_Getblockhash:        {name: "getblockhash", handler: GetBlockHash},
+		Api_GetTotalIssued:      {name: "gettotalissued", handler: GetTotalIssued},
+		Api_Gettransaction:      {name: "gettransaction", handler: GetTransactionByHash},
+		Api_Getasset:            {name: "getasset", handler: GetAssetByHash},
+		Api_GetContract:         {name: "getcontract", handler: GetContract},
+		Api_GetUTXObyAddr:       {name: "getutxobyaddr", handler: GetUnspends},
+		Api_GetUTXObyAsset:      {name: "getutxobyasset", handler: GetUnspendOutput},
+		Api_GetBalanceByAddr:    {name: "getbalancebyaddr", handler: GetBalanceByAddr},
+		Api_GetBalancebyAsset:   {name: "getbalancebyasset", handler: GetBalanceByAsset},
+		Api_OauthServerUrl:      {name: "getoauthserverurl", handler: GetOauthServerUrl},
+		Api_NoticeServerUrl:     {name: "getnoticeserverurl", handler: GetNoticeServerUrl},
+		Api_Restart:             {name: "restart", handler: rt.Restart},
+		Api_GetStateUpdate:      {name: "getstateupdate", handler: GetStateUpdate},
 	}
 
 	sendRawTransaction := func(cmd map[string]interface{}) map[string]interface{} {
@@ -174,7 +180,9 @@ func (rt *restServer) registryMethod() {
 }
 func (rt *restServer) getPath(url string) string {
 
-	if strings.Contains(url, strings.TrimRight(Api_Getblockbyheight, ":height")) {
+	if strings.Contains(url, strings.TrimRight(Api_GetblockTxsByHeight, ":height")) {
+		return Api_GetblockTxsByHeight
+	} else if strings.Contains(url, strings.TrimRight(Api_Getblockbyheight, ":height")) {
 		return Api_Getblockbyheight
 	} else if strings.Contains(url, strings.TrimRight(Api_Getblockhash, ":height")) {
 		return Api_Getblockhash
@@ -204,6 +212,9 @@ func (rt *restServer) getPath(url string) string {
 func (rt *restServer) getParams(r *http.Request, url string, req map[string]interface{}) map[string]interface{} {
 	switch url {
 	case Api_Getconnectioncount:
+		break
+	case Api_GetblockTxsByHeight:
+		req["Height"] = getParam(r, "height")
 		break
 	case Api_Getblockbyheight:
 		req["Raw"] = r.FormValue("raw")

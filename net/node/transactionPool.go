@@ -7,6 +7,7 @@ import (
 	"DNA/core/transaction"
 	"DNA/core/transaction/payload"
 	va "DNA/core/validation"
+	. "DNA/errors"
 	"fmt"
 	"sync"
 )
@@ -30,23 +31,23 @@ func (this *TXNPool) init() {
 
 //append transaction to txnpool when check ok.
 //1.check transaction. 2.check with ledger(db) 3.check with pool
-func (this *TXNPool) AppendTxnPool(txn *transaction.Transaction) bool {
+func (this *TXNPool) AppendTxnPool(txn *transaction.Transaction) ErrCode {
 	//verify transaction with Concurrency
-	if err := va.VerifyTransaction(txn); err != nil {
+	if err, errCode := va.VerifyTransaction(txn); err != nil {
 		log.Info("Transaction verification failed", txn.Hash(), err)
-		return false
+		return errCode
 	}
-	if err := va.VerifyTransactionWithLedger(txn, ledger.DefaultLedger); err != nil {
+	if err, errCode := va.VerifyTransactionWithLedger(txn, ledger.DefaultLedger); err != nil {
 		log.Info("Transaction verification with ledger failed", txn.Hash(), err)
-		return false
+		return errCode
 	}
 	//verify transaction by pool with lock
 	if ok := this.verifyTransactionWithTxnPool(txn); !ok {
-		return false
+		return ErrSummaryAsset
 	}
 	//add the transaction to process scope
 	this.addtxnList(txn)
-	return true
+	return ErrNoError
 }
 
 //get the transaction in txnpool
@@ -86,12 +87,12 @@ func (this *TXNPool) verifyTransactionWithTxnPool(txn *transaction.Transaction) 
 	//check weather have duplicate UTXO input,if occurs duplicate, just keep the latest txn.
 	ok, duplicateTxn := this.apendToUTXOPool(txn)
 	if !ok && duplicateTxn != nil {
-		log.Info(fmt.Sprintf("txn=%x duplicateTxn UTXO occurs with txn in pool=%x,keep the latest one.",txn.Hash(),duplicateTxn.Hash()))
+		log.Info(fmt.Sprintf("txn=%x duplicateTxn UTXO occurs with txn in pool=%x,keep the latest one.", txn.Hash(), duplicateTxn.Hash()))
 		this.removeTransaction(duplicateTxn)
 	}
 	//check issue transaction weather occur exceed issue range.
 	if ok := this.summaryAssetIssueAmount(txn); !ok {
-		log.Info(fmt.Sprintf("Check summary Asset Issue Amount failed with txn=%x",txn.Hash()))
+		log.Info(fmt.Sprintf("Check summary Asset Issue Amount failed with txn=%x", txn.Hash()))
 		this.removeTransaction(txn)
 		return false
 	}
